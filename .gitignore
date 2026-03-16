@@ -45,30 +45,39 @@ desktop.ini
 *~
 
 # =========================
-# Python (for AI agents)
+# Python
 # =========================
-__pycache__/
+**/__pycache__/
 *.py[cod]
-*.pyo
-*.pyd
+*$py.class
+*.so
 .Python
 env/
 venv/
 .venv/
+pip-log.txt
+pip-delete-this-directory.txt
 *.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
 dist/
 build/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+# Local Mock DB
+backend/test_db.json
 
 # =========================
-# Node.js (if applicable)
+# Node.js
 # =========================
-node_modules/
+**/node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+.eslintcache
+.stylelintcache
 
 # =========================
 # Logs & Temp files
