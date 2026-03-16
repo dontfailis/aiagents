@@ -23,7 +23,7 @@
     - [x] Implement AI image generation service for character portraits.
 - [x] **Task: Conductor - User Manual Verification 'Character Engine Backend' (Protocol in workflow.md)** b95f050
 
-## Phase 3: Initial UI Scaffolding (React)
+## Phase 3: Initial UI Scaffolding (React) [checkpoint: 317652e]
 - [x] **Task: Setup Frontend Project (React + TypeScript)** 62db42e
     - [x] Initialize React project with Tailwind CSS (if desired) or Vanilla CSS.
     - [x] Configure basic routing.
@@ -33,4 +33,4 @@
 - [x] **Task: Character Creation UI** 972b58e
     - [x] Implement UI for character definition and portrait selection.
     - [x] Connect UI to Backend API.
-- [~] **Task: Conductor - User Manual Verification 'Initial UI Scaffolding' (Protocol in workflow.md)**
+- [x] **Task: Conductor - User Manual Verification 'Initial UI Scaffolding' (Protocol in workflow.md)** 317652e
