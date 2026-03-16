@@ -134,8 +134,33 @@ async def generate_next_scene(world_data: dict, char_data: dict, history: list =
             
         return json.loads(text)
     except Exception as e:
-        # Fallback
         return {
             "narrative": f"The journey continues for {char_data['name']} in the {world_data['name']}.",
             "choices": [{"id": 1, "text": "Press onward"}, {"id": 2, "text": "Look for shelter"}]
         }
+
+async def generate_session_summary(world_data: dict, char_data: dict, history: list):
+    """
+    Generates a narrative summary of the session's events and the character's impact.
+    """
+    model = genai.GenerativeModel('gemini-1.5-flash')
+    
+    history_str = "STORY EVENTS:\n" + "\n".join([f"Scene: {h['narrative']}\nChoice: {h['choice']}" for h in history])
+    
+    prompt = f"""
+    You are an expert game master. The story session has concluded. 
+    Summarize the character's journey and the impact they had on the world.
+    
+    WORLD: {world_data['name']}
+    CHARACTER: {char_data['name']}
+    
+    {history_str}
+    
+    Provide a 1-2 paragraph conclusion that wraps up this specific adventure.
+    """
+    
+    try:
+        response = model.generate_content(prompt)
+        return response.text
+    except Exception as e:
+        return f"{char_data['name']}'s journey in {world_data['name']} has come to an end for now."

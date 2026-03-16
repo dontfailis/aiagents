@@ -57,5 +57,19 @@ class TestSessions(unittest.TestCase):
         self.assertEqual(data['current_scene']['scene_number'], 2)
         self.assertTrue(len(data['history']) > 0)
 
+    def test_conclude_session(self):
+        create_resp = self.client.post('/api/sessions', json={
+            'character_id': self.char_id,
+            'world_id': self.world_id
+        })
+        session_id = create_resp.json()['id']
+        
+        response = self.client.post(f'/api/sessions/{session_id}/conclude')
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data['status'], 'completed')
+        self.assertIn('summary', data)
+        self.assertTrue(len(data['summary']) > 0)
+
 if __name__ == '__main__':
     unittest.main()

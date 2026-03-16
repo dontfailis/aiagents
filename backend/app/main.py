@@ -5,7 +5,7 @@ import uuid
 import secrets
 import string
 from .database import db, firestore
-from .ai import generate_world_intro, validate_character_fit, generate_character_portrait, generate_next_scene
+from .ai import generate_world_intro, validate_character_fit, generate_character_portrait, generate_next_scene, generate_session_summary
 
 app = FastAPI()
 
@@ -171,17 +171,14 @@ async def submit_choice(session_id: str, submission: ChoiceSubmission):
     if session_data["status"] != "in_progress":
         raise HTTPException(status_code=400, detail="Session is already finished")
     
-    # 1. Find the selected choice text
     current_scene = session_data["current_scene"]
     selected_choice = next((c for c in current_scene["choices"] if c["id"] == submission.choice_id), None)
     if not selected_choice:
         raise HTTPException(status_code=400, detail="Invalid choice ID")
     
-    # 2. Get world and character context
     world_doc = db.collection("worlds").document(session_data["world_id"]).get()
     char_doc = db.collection("characters").document(session_data["character_id"]).get()
     
-    # 3. Generate next scene
     next_scene = await generate_next_scene(
         world_doc.to_dict(), 
         char_doc.to_dict(), 
@@ -190,7 +187,6 @@ async def submit_choice(session_id: str, submission: ChoiceSubmission):
     )
     next_scene["scene_number"] = current_scene["scene_number"] + 1
     
-    # 4. Update history
     history_entry = {
         "scene_number": current_scene["scene_number"],
         "narrative": current_scene["narrative"],
@@ -198,7 +194,6 @@ async def submit_choice(session_id: str, submission: ChoiceSubmission):
     }
     new_history = session_data["history"] + [history_entry]
     
-    # 5. Save updates
     update_data = {
         "current_scene": next_scene,
         "history": new_history,
@@ -206,6 +201,33 @@ async def submit_choice(session_id: str, submission: ChoiceSubmission):
     }
     
     doc_ref.update(update_data)
-    
-    # Response
     return {**session_data, **update_data, "updated_at": "2026-03-16T21:40:00Z"}
+
+@app.post("/api/sessions/{session_id}/conclude")
+async def conclude_session(session_id: str):
+    doc_ref = db.collection("sessions").document(session_id)
+    doc = doc_ref.get()
+    if not doc.exists:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    session_data = doc.to_dict()
+    if session_data["status"] != "in_progress":
+        raise HTTPException(status_code=400, detail="Session is already finished")
+    
+    world_doc = db.collection("worlds").document(session_data["world_id"]).get()
+    char_doc = db.collection("characters").document(session_data["character_id"]).get()
+    
+    summary = await generate_session_summary(
+        world_doc.to_dict(), 
+        char_doc.to_dict(), 
+        session_data["history"]
+    )
+    
+    update_data = {
+        "status": "completed",
+        "summary": summary,
+        "updated_at": firestore.SERVER_TIMESTAMP
+    }
+    
+    doc_ref.update(update_data)
+    return {**session_data, **update_data, "updated_at": "2026-03-16T21:45:00Z"}
