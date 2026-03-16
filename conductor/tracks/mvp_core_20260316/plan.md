@@ -15,13 +15,13 @@
 - [x] **Task: Conductor - User Manual Verification 'World Creation Backend' (Protocol in workflow.md)** 7a843af
 
 ## Phase 2: Character Engine Backend
-- [ ] **Task: Character Creation API**
-    - [ ] Write tests for character creation (POST /api/characters).
-    - [ ] Implement POST /api/characters with world-fit validation.
-- [ ] **Task: AI Portrait Generation Job**
-    - [ ] Write tests for portrait generation service.
-    - [ ] Implement AI image generation service for character portraits.
-- [ ] **Task: Conductor - User Manual Verification 'Character Engine Backend' (Protocol in workflow.md)**
+- [x] **Task: Character Creation API** 90a2190
+    - [x] Write tests for character creation (POST /api/characters).
+    - [x] Implement POST /api/characters with world-fit validation.
+- [x] **Task: AI Portrait Generation Job** 75f3dc7
+    - [x] Write tests for portrait generation service.
+    - [x] Implement AI image generation service for character portraits.
+- [~] **Task: Conductor - User Manual Verification 'Character Engine Backend' (Protocol in workflow.md)**
 
 ## Phase 3: Initial UI Scaffolding (React)
 - [ ] **Task: Setup Frontend Project (React + TypeScript)**
