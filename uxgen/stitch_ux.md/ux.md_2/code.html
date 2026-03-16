@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>RPG Landing Page</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&amp;family=Inter:wght@300;400;500;600&amp;display=swap" rel="stylesheet"/>
+<style type="text/tailwindcss">:root {
+    --primary-bg: #0B0E14;
+    --surface: #1C212D;
+    --surface-hover: #262D3D;
+    --text-primary: #F3F4F6;
+    --text-secondary: #9CA3AF;
+    --accent: #EAB308;
+    --accent-hover: #FACC15;
+    --border: #374151
+    }
+body {
+    font-family: "Inter", sans-serif;
+    background-color: var(--primary-bg);
+    color: var(--text-primary)
+    }
+h1, h2, h3, .font-serif {
+    font-family: "Cinzel", serif
+    }
+.bg-mood {
+    background-image: linear-gradient(to bottom, rgba(11, 14, 20, 0.4), rgba(11, 14, 20, 1)), url(https://lh3.googleusercontent.com/aida-public/AB6AXuCQSFDQ9R6ANr4sJ_AUIZj8c2zbwOPoucd7uBOEg13Qj2d0ZUH7zscCJFe3x4D0Q02mPbz2w5OsPhk481m8we0TM4HF4lorPzOHzYv-pdL4xqF5ZyeeviFQ5OfxgrpfOMdg4z9F1Hh9LtxuQ5cdFL56apH_4fBvWZNrefb6ezk4Jk55ZwcH4estB_MvS5tcHHUyPRIM0tNteoG5bvQzWi2-RyNwGHQQE9w3UHDS9kHbFVWt6uzZtCBLq1czZjX1d6evuE-bp_EStR1N);
+    background-size: cover;
+    background-position: center
+    }
+.glass-card {
+    background: rgba(28, 33, 45, 0.7);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1)
+    }</style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center bg-mood relative overflow-hidden">
+<div class="absolute inset-0 bg-black/40 z-0"></div>
+<div class="absolute inset-0 bg-gradient-to-t from-[var(--primary-bg)] via-transparent to-[var(--primary-bg)]/50 z-0"></div>
+<div class="relative z-10 text-center mb-16 px-4">
+<h1 class="text-5xl md:text-7xl font-bold text-white mb-4 tracking-wider drop-shadow-lg">AETHELARD</h1>
+<p class="text-lg md:text-xl text-[var(--text-secondary)] font-light max-w-2xl mx-auto drop-shadow">
+            Forge your legend in a living world shaped by every choice. <br class="hidden md:block"/>
+            Your story awaits.
+        </p>
+</div>
+<div class="relative z-10 flex flex-col md:flex-row gap-8 w-full max-w-5xl px-6 items-stretch justify-center">
+<button class="glass-card group relative flex flex-col items-center p-10 md:p-14 rounded-2xl transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_0_40px_rgba(234,179,8,0.15)] hover:border-[var(--accent)]/50 flex-1 max-w-md text-left focus:outline-none focus:ring-2 focus:ring-[var(--accent)]">
+<div class="w-20 h-20 rounded-full bg-[var(--surface-hover)] flex items-center justify-center mb-8 border border-[var(--border)] group-hover:bg-[var(--accent)]/10 group-hover:border-[var(--accent)] transition-colors">
+<span class="material-symbols-outlined text-4xl text-[var(--text-secondary)] group-hover:text-[var(--accent)] transition-colors">
+                    explore
+                </span>
+</div>
+<h2 class="text-2xl md:text-3xl font-semibold text-white mb-3 text-center">Create New World</h2>
+<p class="text-[var(--text-secondary)] text-center leading-relaxed font-light">
+                Shape a new universe. Define the era, tone, and lore to begin a fresh saga.
+            </p>
+<div class="mt-8 flex items-center text-[var(--accent)] font-medium tracking-wide text-sm uppercase">
+<span>Begin Creation</span>
+<span class="material-symbols-outlined ml-2 text-sm transition-transform group-hover:translate-x-1">
+                    arrow_forward
+                </span>
+</div>
+<div class="absolute inset-0 rounded-2xl bg-gradient-to-b from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
+</button>
+<button class="glass-card group relative flex flex-col items-center p-10 md:p-14 rounded-2xl transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_0_40px_rgba(255,255,255,0.05)] hover:border-white/30 flex-1 max-w-md text-left focus:outline-none focus:ring-2 focus:ring-white/50">
+<div class="w-20 h-20 rounded-full bg-[var(--surface-hover)] flex items-center justify-center mb-8 border border-[var(--border)] group-hover:bg-white/5 group-hover:border-white/50 transition-colors">
+<span class="material-symbols-outlined text-4xl text-[var(--text-secondary)] group-hover:text-white transition-colors">
+                    group_add
+                </span>
+</div>
+<h2 class="text-2xl md:text-3xl font-semibold text-white mb-3 text-center">Join Existing</h2>
+<p class="text-[var(--text-secondary)] text-center leading-relaxed font-light">
+                Enter an invite code to step into an unfolding narrative shaped by others.
+            </p>
+<div class="mt-8 flex items-center text-white font-medium tracking-wide text-sm uppercase">
+<span>Enter Code</span>
+<span class="material-symbols-outlined ml-2 text-sm transition-transform group-hover:translate-x-1">
+                    arrow_forward
+                </span>
+</div>
+<div class="absolute inset-0 rounded-2xl bg-gradient-to-b from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
+</button>
+</div>
+<footer class="absolute bottom-6 w-full text-center z-10">
+<p class="text-xs text-[var(--text-secondary)]/50 tracking-widest uppercase">Shared AI Storytelling RPG</p>
+</footer>
+
+</body></html>

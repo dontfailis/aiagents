@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>World Creation: Archetypes</title>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        colors: {
+          "primary": "#f4d125",
+          "background-light": "#f8f8f5",
+          "background-dark": "#221f10",
+        },
+        fontFamily: {
+          "display": ["Manrope"]
+        },
+        borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+      },
+    },
+  }
+</script>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-display min-h-screen antialiased">
+<div class="relative flex min-h-screen w-full flex-col group/design-root overflow-x-hidden">
+<div class="layout-container flex h-full grow flex-col">
+<div class="px-4 md:px-10 lg:px-40 flex flex-1 justify-center py-5">
+<div class="layout-content-container flex flex-col w-full max-w-[1200px] flex-1">
+<header class="flex items-center justify-between whitespace-nowrap border-b border-primary/20 px-4 md:px-10 py-4 mb-6">
+<div class="flex items-center gap-4 text-slate-900 dark:text-slate-100">
+<div class="size-6 text-primary">
+<svg fill="none" viewbox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+<path d="M44 11.2727C44 14.0109 39.8386 16.3957 33.69 17.6364C39.8386 18.877 44 21.2618 44 24C44 26.7382 39.8386 29.123 33.69 30.3636C39.8386 31.6043 44 33.9891 44 36.7273C44 40.7439 35.0457 44 24 44C12.9543 44 4 40.7439 4 36.7273C4 33.9891 8.16144 31.6043 14.31 30.3636C8.16144 29.123 4 26.7382 4 24C4 21.2618 8.16144 18.877 14.31 17.6364C8.16144 16.3957 4 14.0109 4 11.2727C4 7.25611 12.9543 4 24 4C35.0457 4 44 7.25611 44 11.2727Z" fill="currentColor"></path>
+</svg>
+</div>
+<h2 class="text-lg font-bold leading-tight tracking-[-0.015em]">NarrativeForge</h2>
+</div>
+</header>
+<div class="flex flex-col gap-3 px-4 mb-4">
+<div class="flex gap-6 justify-between"><p class="text-base font-medium leading-normal">Step 3 of 3: Archetype</p></div>
+<div class="rounded-full bg-primary/20 h-2"><div class="h-2 rounded-full bg-primary" style="width: 100%;"></div></div>
+</div>
+<div class="flex flex-wrap justify-between gap-3 px-4 mb-8">
+<div class="flex min-w-72 flex-col gap-2">
+<h1 class="text-3xl md:text-4xl font-black leading-tight tracking-[-0.033em]">Story Archetype Selection</h1>
+<p class="text-slate-600 dark:text-slate-300 text-base font-normal leading-normal">Choose the core archetype for your world. This will shape the narratives and challenges.</p>
+</div>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 px-4 flex-1">
+<button class="group relative flex flex-col justify-end p-6 rounded-xl overflow-hidden aspect-[3/4] text-left transition-transform hover:-translate-y-1 hover:shadow-xl hover:shadow-primary/20 border-2 border-transparent hover:border-primary focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+<div class="absolute inset-0 bg-cover bg-center z-0 transition-transform duration-500 group-hover:scale-105" data-alt="Dark dramatic landscape with a sword silhouette" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBYAVTQh0CqQa1Imt6UPlkpmhV_4Xw_BmN0quhwQhNtoWyIDOwGeInmbLL90JoOfXFsBDFzoYhnTl329SfJLqPZHSO4HqIivbOjU3rree53jgwExiwPuQP6QXw0Re6iLIGGOoP2ONIxNRKCBXcxUkwicOEjDixEuiFjjC8j1fZDLJr8qm4oCxT2tRxqAkKW64Va2y-vEoOs6noN8HwflAda6nUvMvMJdS57qFjfBHkaSEIkUiNSP6q_6UfRJTrsbhWlQYW_ayAXwSrk");'></div>
+<div class="absolute inset-0 bg-gradient-to-t from-background-dark via-background-dark/60 to-transparent z-10"></div>
+<div class="relative z-20 flex flex-col gap-2">
+<span class="material-symbols-outlined text-4xl text-primary mb-2">swords</span>
+<h3 class="text-white text-2xl font-bold leading-tight">Adventure</h3>
+<p class="text-slate-200 text-sm line-clamp-3">Epic quests, heroic deeds, and battling the forces of darkness. Your standard fantasy fare.</p>
+</div>
+</button>
+<button class="group relative flex flex-col justify-end p-6 rounded-xl overflow-hidden aspect-[3/4] text-left transition-transform hover:-translate-y-1 hover:shadow-xl hover:shadow-primary/20 border-2 border-transparent hover:border-primary focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+<div class="absolute inset-0 bg-cover bg-center z-0 transition-transform duration-500 group-hover:scale-105" data-alt="Vast uncharted map with a compass" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCdqv2FAyTZCPL6skRqEvUSSPRHhAbnuQ6awPLH7MOdnn2M4sIUesWt0vguD214TswI-ec8B-kAT2Tj9PBfZyDDk5PkrF1528k9ixNkjUGhk4zHh506uCpZXJXvEXBX4NZVycoRbj8VgcLNQ1_hkten9cWY7F6ZigTRHF9W_DRPZKYsrbbGbbBgsSAIFfEa8DYI-24FgYvVkQMyYLidGvFlbgPeH5ddfteJtNlpIDoDiCHDgRzggx2tGQtUGfWeOsV-ZWyyB3wOFdiJ");'></div>
+<div class="absolute inset-0 bg-gradient-to-t from-background-dark via-background-dark/60 to-transparent z-10"></div>
+<div class="relative z-20 flex flex-col gap-2">
+<span class="material-symbols-outlined text-4xl text-primary mb-2">explore</span>
+<h3 class="text-white text-2xl font-bold leading-tight">Exploration</h3>
+<p class="text-slate-200 text-sm line-clamp-3">Discovering new lands, uncovering ancient ruins, and mapping the unknown reaches.</p>
+</div>
+</button>
+<button class="group relative flex flex-col justify-end p-6 rounded-xl overflow-hidden aspect-[3/4] text-left transition-transform hover:-translate-y-1 hover:shadow-xl hover:shadow-primary/20 border-2 border-transparent hover:border-primary focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+<div class="absolute inset-0 bg-cover bg-center z-0 transition-transform duration-500 group-hover:scale-105" data-alt="Shadowy figure in an alleyway" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAeLj1J2yPNH4xfCe6p1bzNVzIST-_bBl7w2bt29h5mLWi4nYBgD_4i_UyuBh_A0HzLUNu8Mbmtd7J1W0cwto7wHUVXvKlQ5BbyFPfo7CK4Yl1DgST64mQgjAiZ3Fm89vNl2Jdrn8dhxO-hY9oKz-eVl_Yj4Ioht1eqBMqNuunR9onAkhHhd2v77rxe3CsunmUtlalohTNY5sEOlwXxSWVnOivhKuGpGTucY0pU0bYawINOVqAAsQkC3LwpmTpBbm3aFBpYr2Z9xwNq");'></div>
+<div class="absolute inset-0 bg-gradient-to-t from-background-dark via-background-dark/60 to-transparent z-10"></div>
+<div class="relative z-20 flex flex-col gap-2">
+<span class="material-symbols-outlined text-4xl text-primary mb-2">search</span>
+<h3 class="text-white text-2xl font-bold leading-tight">Intrigue</h3>
+<p class="text-slate-200 text-sm line-clamp-3">Political maneuvering, secrets, spying, and navigating complex social webs of power.</p>
+</div>
+</button>
+<button class="group relative flex flex-col justify-end p-6 rounded-xl overflow-hidden aspect-[3/4] text-left transition-transform hover:-translate-y-1 hover:shadow-xl hover:shadow-primary/20 border-2 border-transparent hover:border-primary focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+<div class="absolute inset-0 bg-cover bg-center z-0 transition-transform duration-500 group-hover:scale-105" data-alt="Campfire in a desolate wasteland" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDL0D8siyMdmXxsrox55chSP3gdXFE94Frnw9DVo2_7UrSGfABgRliDuDZaL81NCo-fW4dLur7KCpVe1OLUzWtBFamuYPy3Zfhz4zPVzFEaLM-kQXWdBfwgk2Qg5DBJNwP7fE9jTkvwHPosFT9Q5mcdpMoluFuIUao3ZmVMbKMTqjP-bGlpH2nna3l_4fkvJ_VRAg4qFUwlepwOvbZxMIK06waLPLrTGp-cIYAy2LSCHeselv2cxHJ-JSajO2hRd1OtG_KSBMrTb64a");'></div>
+<div class="absolute inset-0 bg-gradient-to-t from-background-dark via-background-dark/60 to-transparent z-10"></div>
+<div class="relative z-20 flex flex-col gap-2">
+<span class="material-symbols-outlined text-4xl text-primary mb-2">local_fire_department</span>
+<h3 class="text-white text-2xl font-bold leading-tight">Survival</h3>
+<p class="text-slate-200 text-sm line-clamp-3">Scavenging for resources, enduring harsh elements, and fighting off desperate enemies.</p>
+</div>
+</button>
+</div>
+<div class="flex px-4 py-8 justify-end mt-auto">
+<button class="flex min-w-[120px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-12 px-6 bg-primary text-background-dark text-base font-bold leading-normal tracking-[0.015em] hover:bg-primary/90 transition-colors">
+<span class="truncate">Finalize World</span>
+<span class="material-symbols-outlined ml-2 text-xl">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</body></html>

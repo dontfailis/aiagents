@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Story Play Session Screen</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<style type="text/tailwindcss">:root {
+    --bg-color: #1a1a1a;--text-main: #e2e8f0;
+    --text-muted: #94a3b8;
+    --accent: #ca8a04;--border-color: #334155;
+    --card-bg: #1e293b;
+    --hover-bg: #334155
+    }
+body {
+    background-color: var(--bg-color);
+    color: var(--text-main);
+    font-family: "Inter", sans-serif;
+    background-image: linear-gradient(to bottom, rgba(26, 26, 26, 0.8), rgba(26, 26, 26, 1)), url(https://lh3.googleusercontent.com/aida-public/AB6AXuChInn5EgYBw8kzwzmI2oP9D0YP0Nj8N6WSbWlvsbiLkDUhVEK_3FuFSBlMhstoZSfo8PciCukib2jpEOGzhl6q1k80Mks4G_JRCkP6166EjSVCVLUJJsoypWiiLMIDdZ7FUTHlJ_I7HQGjsIleQIWp878o5OJE4ATJ6SdZTIgp5kTImiX5rlZ9ZuWvZfvtSKAGcqdlLwTVO63rXnksMv-uh3db124Bagp8itePAzzquGDBGKuHuhpyovBvS0AreLobX3s9v-PhBfmc);background-size: cover;
+    background-position: center;
+    background-attachment: fixed
+    }
+.story-text {
+    font-family: "Lora", serif
+    }</style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-4 antialiased">
+<header class="fixed top-0 left-0 w-full p-6 flex justify-between items-center text-[var(--text-muted)] border-b border-[var(--border-color)] bg-[var(--bg-color)]/80 backdrop-blur-md z-10">
+<div class="flex items-center space-x-3">
+<span class="material-symbols-outlined text-[var(--accent)] text-xl">fort</span>
+<span class="text-sm font-medium tracking-wide">The Shattered Realm <span class="mx-2 opacity-50">·</span> Harbor District</span>
+</div>
+<div class="flex items-center space-x-3">
+<span class="text-sm font-medium tracking-wide">Kira Ashveil <span class="mx-2 opacity-50">·</span> Rogue</span>
+<div class="w-8 h-8 rounded-full bg-[var(--border-color)] overflow-hidden border border-[var(--accent)]/30">
+<img alt="Kira Portrait" class="w-full h-full object-cover grayscale brightness-75" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDU60ewdIIy180-P-ZFkAwe-ZXvHvfUD3sxLlZZQgW_-krAwVyPe0PVdVF5H-zbE5yyOqbB1ZR4_-_AE-heyXxPbb8l7WCPrOvw48ro5oUQ6ymhgjpL4WOzo4aUocE5-HScgS_eeN8hLKDrESUfsPvhffbVypF1xzRgsb6lhftsnlq-VLf0MXEG-M2DIgWSSzp3Vz_1piBrS0eg9r067v1tGkhyST4y4E0MO-G75qIgmuUlmIU4kQZqRzqcQa4uFnJGFfdifD7MkHNz"/>
+</div>
+</div>
+</header>
+<main class="w-full max-w-3xl mt-24 mb-16 px-6">
+<div class="text-center mb-10">
+<span class="inline-block uppercase tracking-widest text-xs font-semibold text-[var(--accent)] border border-[var(--accent)]/30 px-3 py-1 rounded-full bg-[var(--accent)]/10">
+                Scene 3 of 8
+            </span>
+</div>
+<article class="story-text text-2xl leading-relaxed text-[var(--text-main)] mb-16 space-y-6">
+<p>
+                The dockside tavern is thick with smoke and whispered arguments. The smell of stale ale and salt water hangs heavily in the air. You sit in a shadowed corner, nursing a lukewarm drink, watching the patrons.
+            </p>
+<p>
+                A hooded figure pushes through the heavy wooden door, bringing a gust of cold sea wind with them. As they approach the bar, the dim light catches a glint of metal on their hand—the unmistakable crest of the Guild vault, stamped onto a heavy signet ring.
+            </p>
+<p class="font-medium italic pt-4">
+                What do you do?
+            </p>
+</article>
+<div class="space-y-4">
+<button class="w-full text-left p-6 rounded-xl border border-[var(--border-color)] bg-[var(--card-bg)]/80 backdrop-blur-sm hover:bg-[var(--hover-bg)] hover:border-[var(--text-muted)] transition-all duration-200 group flex items-start gap-4 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--accent)]">
+<span class="text-[var(--accent)] font-semibold text-lg shrink-0 w-6">A</span>
+<span class="story-text text-xl group-hover:text-white transition-colors">Approach and introduce yourself as a fellow Guild member.</span>
+</button>
+<button class="w-full text-left p-6 rounded-xl border border-[var(--border-color)] bg-[var(--card-bg)]/80 backdrop-blur-sm hover:bg-[var(--hover-bg)] hover:border-[var(--text-muted)] transition-all duration-200 group flex items-start gap-4 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--accent)]">
+<span class="text-[var(--accent)] font-semibold text-lg shrink-0 w-6">B</span>
+<span class="story-text text-xl group-hover:text-white transition-colors">Wait in the shadows and follow them when they leave.</span>
+</button>
+<button class="w-full text-left p-6 rounded-xl border border-[var(--border-color)] bg-[var(--card-bg)]/80 backdrop-blur-sm hover:bg-[var(--hover-bg)] hover:border-[var(--text-muted)] transition-all duration-200 group flex items-start gap-4 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--accent)]">
+<span class="text-[var(--accent)] font-semibold text-lg shrink-0 w-6">C</span>
+<span class="story-text text-xl group-hover:text-white transition-colors">Quietly ask the barkeep if they know who the stranger is.</span>
+</button>
+</div>
+</main>
+
+</body></html>
