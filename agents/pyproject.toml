@@ -1,0 +1,17 @@
+[project]
+name = "rpg-agents"
+version = "0.1.0"
+description = "RPG AI Agents using Google ADK and A2A"
+authors = [{ name = "Timm Rohw", email = "timm@example.com" }]
+readme = "README.md"
+requires-python = ">=3.10"
+
+dependencies = [
+    "google-adk>=1.27.0",
+    "google-genai>=1.9.0",
+    "python-dotenv>=1.0.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
