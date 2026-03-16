@@ -42,7 +42,7 @@ module "cloud-run-2" {
   project_id                    = var.project_id
   location                      = var.location
   service_name                  = "agent-createworld"
-  containers                    = [{"resources" = {"startup_cpu_boost" = false, "cpu_idle" = true}, "container_image" = "us-docker.pkg.dev/cloudrun/container/hello", "container_name" = "service-container", "env_vars" = {"cloud_run_1_SERVICE_ENDPOINT" = module.cloud-run-1.service_uri}, "ports" = {"container_port" = 8080, "name" = "http1"}}]
+  containers                    = [{"resources" = {"startup_cpu_boost" = false, "cpu_idle" = true}, "container_image" = "us-docker.pkg.dev/cloudrun/container/hello", "container_name" = "service-container", "env_vars" = {"cloud_run_1_SERVICE_ENDPOINT" = module.cloud-run-1.service_uri, "AGENT_CREATEWORLD_URL" = module.cloud-run-2.service_uri, "AGENT_CREATECHARACTER_URL" = module.cloud-run-3.service_uri, "AGENT_NARRATIVE_URL" = module.cloud-run-4.service_uri, "AGENT_OPTIONGEN_URL" = module.cloud-run-5.service_uri}, "ports" = {"container_port" = 8080, "name" = "http1"}}]
   gpu_zonal_redundancy_disabled = false
   service_account_project_roles = ["roles/run.invoker"]
   vpc_access = {
@@ -66,7 +66,7 @@ module "cloud-run-3" {
   project_id                    = var.project_id
   location                      = var.location
   service_name                  = "agent-createcharacter"
-  containers                    = [{"ports" = {"container_port" = 8080, "name" = "http1"}, "resources" = {"cpu_idle" = true, "startup_cpu_boost" = false}, "container_image" = "us-docker.pkg.dev/cloudrun/container/hello", "container_name" = "service-container", "env_vars" = {"cloud_run_1_SERVICE_ENDPOINT" = module.cloud-run-1.service_uri}}]
+  containers                    = [{"ports" = {"container_port" = 8080, "name" = "http1"}, "resources" = {"cpu_idle" = true, "startup_cpu_boost" = false}, "container_image" = "us-docker.pkg.dev/cloudrun/container/hello", "container_name" = "service-container", "env_vars" = {"cloud_run_1_SERVICE_ENDPOINT" = module.cloud-run-1.service_uri, "AGENT_CREATEWORLD_URL" = module.cloud-run-2.service_uri, "AGENT_CREATECHARACTER_URL" = module.cloud-run-3.service_uri, "AGENT_NARRATIVE_URL" = module.cloud-run-4.service_uri, "AGENT_OPTIONGEN_URL" = module.cloud-run-5.service_uri}}]
   gpu_zonal_redundancy_disabled = false
   service_account_project_roles = ["roles/run.invoker"]
   vpc_access = {
@@ -90,7 +90,7 @@ module "cloud-run-4" {
   project_id                    = var.project_id
   location                      = var.location
   service_name                  = "agent-narrative"
-  containers                    = [{"env_vars" = {"cloud_run_1_SERVICE_ENDPOINT" = module.cloud-run-1.service_uri}, "ports" = {"container_port" = 8080, "name" = "http1"}, "resources" = {"cpu_idle" = true, "startup_cpu_boost" = false}, "container_image" = "us-docker.pkg.dev/cloudrun/container/hello", "container_name" = "service-container"}]
+  containers                    = [{"env_vars" = {"cloud_run_1_SERVICE_ENDPOINT" = module.cloud-run-1.service_uri, "AGENT_CREATEWORLD_URL" = module.cloud-run-2.service_uri, "AGENT_CREATECHARACTER_URL" = module.cloud-run-3.service_uri, "AGENT_NARRATIVE_URL" = module.cloud-run-4.service_uri, "AGENT_OPTIONGEN_URL" = module.cloud-run-5.service_uri}, "ports" = {"container_port" = 8080, "name" = "http1"}, "resources" = {"cpu_idle" = true, "startup_cpu_boost" = false}, "container_image" = "us-docker.pkg.dev/cloudrun/container/hello", "container_name" = "service-container"}]
   gpu_zonal_redundancy_disabled = false
   service_account_project_roles = ["roles/run.invoker"]
   vpc_access = {
@@ -131,7 +131,7 @@ module "cloud-run-5" {
   project_id                    = var.project_id
   location                      = var.location
   service_name                  = "agent-optiongeneration"
-  containers                    = [{"resources" = {"startup_cpu_boost" = false, "cpu_idle" = true}, "container_image" = "us-docker.pkg.dev/cloudrun/container/hello", "container_name" = "service-container", "env_vars" = {"cloud_run_1_SERVICE_ENDPOINT" = module.cloud-run-1.service_uri}, "ports" = {"container_port" = 8080, "name" = "http1"}}]
+  containers                    = [{"resources" = {"startup_cpu_boost" = false, "cpu_idle" = true}, "container_image" = "us-docker.pkg.dev/cloudrun/container/hello", "container_name" = "service-container", "env_vars" = {"cloud_run_1_SERVICE_ENDPOINT" = module.cloud-run-1.service_uri, "AGENT_CREATEWORLD_URL" = module.cloud-run-2.service_uri, "AGENT_CREATECHARACTER_URL" = module.cloud-run-3.service_uri, "AGENT_NARRATIVE_URL" = module.cloud-run-4.service_uri, "AGENT_OPTIONGEN_URL" = module.cloud-run-5.service_uri}, "ports" = {"container_port" = 8080, "name" = "http1"}}]
   gpu_zonal_redundancy_disabled = false
   service_account_project_roles = ["roles/run.invoker"]
   vpc_access = {
@@ -155,7 +155,7 @@ module "cloud-run-6" {
   project_id                    = var.project_id
   location                      = var.location
   service_name                  = "frontend-web"
-  containers                    = [{"ports" = {"container_port" = 8080, "name" = "http1"}, "resources" = {"cpu_idle" = true, "startup_cpu_boost" = false}, "container_image" = "us-docker.pkg.dev/cloudrun/container/hello", "container_name" = "service-container", "env_vars" = {"cloud_run_1_SERVICE_ENDPOINT" = module.cloud-run-1.service_uri}}]
+  containers                    = [{"ports" = {"container_port" = 8080, "name" = "http1"}, "resources" = {"cpu_idle" = true, "startup_cpu_boost" = false}, "container_image" = "us-docker.pkg.dev/cloudrun/container/hello", "container_name" = "service-container", "env_vars" = {"cloud_run_1_SERVICE_ENDPOINT" = module.cloud-run-1.service_uri, "AGENT_CREATEWORLD_URL" = module.cloud-run-2.service_uri, "AGENT_CREATECHARACTER_URL" = module.cloud-run-3.service_uri, "AGENT_NARRATIVE_URL" = module.cloud-run-4.service_uri, "AGENT_OPTIONGEN_URL" = module.cloud-run-5.service_uri}}]
   gpu_zonal_redundancy_disabled = false
   service_account_project_roles = ["roles/run.invoker"]
   vpc_access = {

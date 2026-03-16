@@ -13,19 +13,22 @@ load_dotenv()
 
 SYSTEM_INSTRUCTION = (
     "You are an expert game master. Your task is to generate the narrative for a storytelling RPG. "
-    "You will receive a world description, character description, and optionally story history and a player's latest choice. "
-    "Write 2-3 paragraphs of immersive narrative for the current scene, advancing the story based on the player's choice and the world context. "
-    "Do NOT generate choices for the player; your ONLY job is to write the story text. "
-    "Once generated, output ONLY the narrative text, nothing else."
+    "You will receive instructions to create a new session or update an existing one. "
+    "You MUST use the 'create_session', 'get_session', 'update_session', or 'conclude_session' tools to read or update the database based on the request. "
+    "When creating a narrative, write 2-3 paragraphs. "
+    "When asked, you must read the database, generate narrative, and then save it using the appropriate tool. "
+    "Your final response MUST be a pure JSON representation of the final tool output you received. "
+    "DO NOT output markdown blocks or conversational text, ONLY raw JSON."
 )
 
-mcp_url = os.getenv("cloud_run_1_SERVICE_ENDPOINT", os.getenv("MCP_SERVER_URL", "http://localhost:8080/mcp"))
+base_mcp = os.getenv("cloud_run_1_SERVICE_ENDPOINT", os.getenv("MCP_SERVER_URL", "http://localhost:8080")).rstrip("/")
+mcp_url = f"{base_mcp}/sse"
 logger.info(f"--- 🔧 Connecting to MCP Server at {mcp_url} ---")
 
 root_agent = LlmAgent(
     model="gemini-2.5-flash",
     name="agent-narrative",
-    description="Generates the narrative scene for the story based on context and choices.",
+    description="Generates narrative scenes and orchestrates the session database updates.",
     instruction=SYSTEM_INSTRUCTION,
     tools=[
         MCPToolset(
