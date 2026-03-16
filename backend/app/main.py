@@ -5,7 +5,7 @@ import uuid
 import secrets
 import string
 from .database import db, firestore
-from .ai import generate_world_intro, validate_character_fit
+from .ai import generate_world_intro, validate_character_fit, generate_character_portrait
 
 app = FastAPI()
 
@@ -93,12 +93,15 @@ async def create_character(char_data: CharacterCreate):
     if not is_valid:
         raise HTTPException(status_code=400, detail=f"Character does not fit the world: {reasoning}")
     
+    # 3. Generate Character Portrait
+    portrait_url = await generate_character_portrait(world_data, char_data.model_dump())
+    
     char_id = str(uuid.uuid4())
     char_dict = char_data.model_dump()
     char_dict.update({
         "id": char_id,
         "created_at": firestore.SERVER_TIMESTAMP,
-        "portrait_url": None,
+        "portrait_url": portrait_url,
         "fit_reasoning": reasoning
     })
     
@@ -109,7 +112,7 @@ async def create_character(char_data: CharacterCreate):
     response_dict.update({
         "id": char_id,
         "created_at": "2026-03-16T21:10:00Z",
-        "portrait_url": None,
+        "portrait_url": portrait_url,
         "fit_reasoning": reasoning
     })
     

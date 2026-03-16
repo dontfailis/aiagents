@@ -28,6 +28,8 @@ class TestCharacters(unittest.TestCase):
         self.assertEqual(data['name'], 'Kira')
         self.assertEqual(data['world_id'], self.world_id)
         self.assertIn('id', data)
+        self.assertIn('portrait_url', data)
+        self.assertIsNotNone(data['portrait_url'])
 
     def test_create_character_invalid_world(self):
         response = self.client.post('/api/characters', json={
@@ -51,8 +53,6 @@ class TestCharacters(unittest.TestCase):
             'visual_description': 'Chrome plating and glowing blue wires.'
         })
         # If AI validation is working, this should likely fail (400)
-        # Note: Depending on the AI response, this might pass if it's lenient, 
-        # but for a cyborg in medieval world, it should fail.
         self.assertIn(response.status_code, [400, 201])
         if response.status_code == 400:
             self.assertIn("Character does not fit the world", response.json()['detail'])

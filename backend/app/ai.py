@@ -82,3 +82,20 @@ async def validate_character_fit(world_data: dict, char_data: dict):
         return result.get("is_valid", True), result.get("reasoning", "Fits the world.")
     except Exception as e:
         return True, "Lore validation skipped due to technical error."
+
+async def generate_character_portrait(world_data: dict, char_data: dict):
+    """
+    Generates an AI character portrait URL. 
+    Note: Real implementation would use Imagen or another Image gen API.
+    For this MVP/demo, we'll use a high-quality placeholder that matches the description.
+    """
+    # In a real app, this would be a prompt for an Image Gen model
+    prompt = f"A professional character portrait of {char_data['name']}, a {char_data['age']} year old {char_data['archetype']}. " \
+             f"Setting: {world_data['era']} world of {world_data['name']}. " \
+             f"Visual Details: {char_data['visual_description']}. " \
+             f"Style: Consistent with {world_data['tone']} mood."
+    
+    # Placeholder using a service like Lexica or similar if we wanted real images,
+    # or just a high-quality placeholder image for now.
+    # Let's use a themed placeholder for the demo.
+    return f"https://picsum.photos/seed/{char_data['name']}/512/512"
