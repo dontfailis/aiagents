@@ -4,5 +4,5 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [ ] **Track: MVP Core: AI World and Character Engine**
+- [x] **Track: MVP Core: AI World and Character Engine**
   *Link: [./tracks/mvp_core_20260316/](./tracks/mvp_core_20260316/)*
