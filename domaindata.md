@@ -1,0 +1,2 @@
+Domain: worldchronicle.nl
+owned
