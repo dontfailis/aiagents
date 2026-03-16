@@ -45,3 +45,21 @@ variable "agent_optiongen_url" {
   type        = string
   default     = ""
 }
+
+# ── Cloud Build / CI variables ─────────────────────────────────────────────────
+
+variable "github_owner" {
+  description = "GitHub organisation or username that owns the repository."
+  type        = string
+}
+
+variable "github_repo" {
+  description = "GitHub repository name (without the owner prefix)."
+  type        = string
+}
+
+variable "artifact_registry_repo" {
+  description = "Artifact Registry repository ID used to store agent Docker images."
+  type        = string
+  default     = "cloud-run-source-deploy"
+}
