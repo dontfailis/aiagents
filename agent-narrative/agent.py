@@ -22,12 +22,12 @@ SYSTEM_INSTRUCTION = (
 )
 
 base_mcp = os.getenv("cloud_run_1_SERVICE_ENDPOINT", os.getenv("MCP_SERVER_URL", "http://localhost:8080")).rstrip("/")
-mcp_url = f"{base_mcp}/sse"
+mcp_url = f"{base_mcp}/mcp"
 logger.info(f"--- 🔧 Connecting to MCP Server at {mcp_url} ---")
 
 root_agent = LlmAgent(
     model="gemini-2.5-flash",
-    name="agent-narrative",
+    name="agent_narrative",
     description="Generates narrative scenes and orchestrates the session database updates.",
     instruction=SYSTEM_INSTRUCTION,
     tools=[

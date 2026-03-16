@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional
 import uuid
 import secrets
 import string
@@ -47,6 +47,59 @@ def generate_share_code(length=8):
     alphabet = string.ascii_uppercase + string.digits
     return ''.join(secrets.choice(alphabet) for _ in range(length))
 
+def list_collection_documents(collection_name: str):
+    collection = db.collection(collection_name)
+
+    if hasattr(collection, "_load_db"):
+        db_data = collection._load_db()
+        return list(db_data.get(collection_name, {}).values())
+
+    return [doc.to_dict() for doc in collection.stream()]
+
+def find_world_by_share_code(share_code: str):
+    normalized_code = share_code.strip().upper()
+
+    for world in list_collection_documents("worlds"):
+        if world.get("share_code", "").upper() == normalized_code:
+            return world
+
+    return None
+
+def get_character_name(character_id: str):
+    char_doc = db.collection("characters").document(character_id).get()
+    if not char_doc.exists:
+        return "Unknown Character"
+    return char_doc.to_dict().get("name", "Unknown Character")
+
+def build_chronicle_entry(session_data: dict, world_data: dict):
+    history_count = len(session_data.get("history", []))
+    impact = "local"
+    if history_count >= 4:
+        impact = "global"
+    elif history_count >= 2:
+        impact = "regional"
+
+    excerpt = session_data.get("summary")
+    if not excerpt:
+        excerpt = session_data.get("current_scene", {}).get("narrative", "")
+
+    created_at = session_data.get("updated_at") or session_data.get("created_at") or "Earlier"
+    when_label = "Today"
+    if isinstance(created_at, str) and created_at:
+        when_label = created_at.split("T")[0]
+
+    return {
+        "id": session_data["id"],
+        "session_id": session_data["id"],
+        "session_label": f"Session {max(history_count, 1)}",
+        "when_label": when_label,
+        "character_name": get_character_name(session_data.get("character_id", "")),
+        "location": world_data.get("environment", "Unknown Region"),
+        "excerpt": excerpt,
+        "impact": impact,
+        "footer": f"{max(history_count, 1)} story beat{'s' if history_count != 1 else ''} recorded",
+    }
+
 # Endpoints
 @app.get("/")
 async def root():
@@ -77,6 +130,49 @@ async def create_world(world_data: WorldCreate):
         "created_at": "2026-03-16T20:55:00Z"
     })
     return response_dict
+
+@app.post("/api/worlds/{share_code}/join")
+async def join_world(share_code: str):
+    world = find_world_by_share_code(share_code)
+    if not world:
+        raise HTTPException(status_code=404, detail="World not found for that share code")
+
+    recent_sessions = [
+        session
+        for session in list_collection_documents("sessions")
+        if session.get("world_id") == world["id"] and session.get("status") == "completed"
+    ]
+    recent_sessions.sort(
+        key=lambda session: session.get("updated_at") or session.get("created_at") or "",
+        reverse=True,
+    )
+
+    return {
+        "world": world,
+        "recent_events": [build_chronicle_entry(session, world) for session in recent_sessions[:3]],
+    }
+
+@app.get("/api/worlds/{world_id}/chronicle")
+async def get_world_chronicle(world_id: str):
+    world_doc = db.collection("worlds").document(world_id).get()
+    if not world_doc.exists:
+        raise HTTPException(status_code=404, detail="World not found")
+
+    world_data = world_doc.to_dict()
+    sessions = [
+        session
+        for session in list_collection_documents("sessions")
+        if session.get("world_id") == world_id and session.get("status") == "completed"
+    ]
+    sessions.sort(
+        key=lambda session: session.get("updated_at") or session.get("created_at") or "",
+        reverse=True,
+    )
+
+    return {
+        "world": world_data,
+        "entries": [build_chronicle_entry(session, world_data) for session in sessions],
+    }
 
 @app.get("/api/worlds/{world_id}")
 async def get_world(world_id: str):

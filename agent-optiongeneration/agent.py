@@ -21,12 +21,12 @@ SYSTEM_INSTRUCTION = (
 
 # No DB tools strictly needed here, just pure generation, but we can provide them just in case
 base_mcp = os.getenv("cloud_run_1_SERVICE_ENDPOINT", os.getenv("MCP_SERVER_URL", "http://localhost:8080")).rstrip("/")
-mcp_url = f"{base_mcp}/sse"
+mcp_url = f"{base_mcp}/mcp"
 logger.info(f"--- 🔧 Connecting to MCP Server at {mcp_url} ---")
 
 root_agent = LlmAgent(
     model="gemini-2.5-flash",
-    name="agent-optiongeneration",
+    name="agent_optiongeneration",
     description="Generates JSON choices for the player based on the current narrative scene.",
     instruction=SYSTEM_INSTRUCTION,
     tools=[

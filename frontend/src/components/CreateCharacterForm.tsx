@@ -1,157 +1,444 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { ArrowLeft, ArrowRight, BookOpen, Coins, Map, RefreshCw, Shield, Sparkles, UserRound, VenetianMask, WandSparkles } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { createCharacter, createSession, getWorld } from '../lib/api';
+import {
+  AGE_MARKS,
+  CHARACTER_ARCHETYPES,
+  ageFromIndex,
+  cardStyle,
+  getArchetypeById,
+  suggestCharacterDetails,
+} from '../lib/storyContent';
+import type { KeyboardEvent } from 'react';
+import type { Character, World } from '../lib/types';
 
-const API_BASE_URL = 'http://localhost:8000';
+const CHARACTER_STEP_LABELS = ['Lineage', 'Details', 'Portrait'];
 
-const CreateCharacterForm = () => {
+const ARCHETYPE_ICONS = {
+  Rogue: VenetianMask,
+  Scholar: BookOpen,
+  Warrior: Shield,
+  Survivor: Sparkles,
+  Merchant: Coins,
+  Wanderer: Map,
+};
+
+const PORTRAIT_FILTERS = ['none', 'sepia(0.18) saturate(0.92)', 'contrast(1.08) brightness(0.98)', 'grayscale(0.08) saturate(1.15)'] as const;
+
+export default function CreateCharacterForm() {
   const { worldId } = useParams();
   const navigate = useNavigate();
-  const [world, setWorld] = useState<any>(null);
-  const [formData, setFormData] = useState({
-    world_id: worldId,
-    name: '',
-    age: 25,
-    archetype: 'Rogue',
-    backstory: '',
-    visual_description: ''
-  });
-  const [loading, setLoading] = useState(false);
+  const [world, setWorld] = useState<World | null>(null);
+  const [step, setStep] = useState(0);
+  const [archetypeId, setArchetypeId] = useState('Rogue');
+  const [detailSeed, setDetailSeed] = useState(0);
+  const [name, setName] = useState('');
+  const [ageIndex, setAgeIndex] = useState(1);
+  const [backstory, setBackstory] = useState('');
+  const [looks, setLooks] = useState<string[]>([]);
+  const [lookDraft, setLookDraft] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [character, setCharacter] = useState<any>(null);
+  const [createdCharacter, setCreatedCharacter] = useState<Character | null>(null);
+  const [selectedPortraitIndex, setSelectedPortraitIndex] = useState(0);
 
   useEffect(() => {
-    const fetchWorld = async () => {
-      try {
-        const response = await axios.get(`${API_BASE_URL}/api/worlds/${worldId}`);
-        setWorld(response.data);
-      } catch (err) {
-        setError('Failed to load world context.');
+    async function loadWorld() {
+      if (!worldId) {
+        setError('Missing world context.');
+        setLoading(false);
+        return;
       }
-    };
-    fetchWorld();
+
+      try {
+        const response = await getWorld(worldId);
+        setWorld(response);
+      } catch (loadError) {
+        setError(loadError instanceof Error ? loadError.message : 'Failed to load world.');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    void loadWorld();
   }, [worldId]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await axios.post(`${API_BASE_URL}/api/characters`, formData);
-      setCharacter(response.data);
-    } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to create character.');
-    } finally {
-      setLoading(false);
+  useEffect(() => {
+    if (!world) {
+      return;
     }
-  };
 
-  if (!world && !error) return <div>Loading world context...</div>;
+    const suggestion = suggestCharacterDetails(archetypeId, world, detailSeed);
+    setName(suggestion.name);
+    setAgeIndex(suggestion.ageIndex);
+    setBackstory(suggestion.backstory);
+    setLooks(suggestion.looks);
+  }, [archetypeId, detailSeed, world]);
 
-  const handleStartAdventure = async () => {
-    setLoading(true);
+  function addLookCue() {
+    const nextCue = lookDraft.trim().toLowerCase();
+
+    if (!nextCue || looks.includes(nextCue)) {
+      setLookDraft('');
+      return;
+    }
+
+    setLooks((current) => [...current, nextCue]);
+    setLookDraft('');
+  }
+
+  function handleLookKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      addLookCue();
+    }
+  }
+
+  async function handleGeneratePortraits() {
+    if (!worldId) {
+      return;
+    }
+
+    setSubmitting(true);
     setError(null);
+
     try {
-      const response = await axios.post(`${API_BASE_URL}/api/sessions`, {
-        character_id: character.id,
-        world_id: worldId
+      const character = await createCharacter({
+        world_id: worldId,
+        name,
+        age: ageFromIndex(ageIndex),
+        archetype: archetypeId,
+        backstory,
+        visual_description: looks.join(', '),
       });
-      navigate(`/session/${response.data.id}`);
-    } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to start adventure.');
+      setCreatedCharacter(character);
+      setStep(2);
+    } catch (submitError) {
+      setError(submitError instanceof Error ? submitError.message : 'Failed to create character.');
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
-  };
+  }
 
-  if (character) {
+  async function handleConfirmCharacter() {
+    if (!createdCharacter || !worldId) {
+      return;
+    }
+
+    setSubmitting(true);
+    setError(null);
+
+    try {
+      const session = await createSession({
+        character_id: createdCharacter.id,
+        world_id: worldId,
+      });
+      navigate(`/session/${session.id}`);
+    } catch (submitError) {
+      setError(submitError instanceof Error ? submitError.message : 'Failed to start session.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  if (loading) {
     return (
-      <div className="max-w-2xl mx-auto p-8 bg-white rounded shadow text-center">
-        <h2 className="text-3xl font-bold mb-4">Character Created!</h2>
-        <div className="mb-6">
-          <img src={character.portrait_url} alt={character.name} className="w-64 h-64 mx-auto rounded-full border-4 border-blue-500 object-cover" />
-        </div>
-        <h3 className="text-2xl font-bold">{character.name}</h3>
-        <p className="text-gray-600 mb-4">{character.archetype}, Age {character.age}</p>
-        <div className="bg-blue-50 p-4 rounded mb-6 text-left">
-          <h4 className="font-bold mb-1">AI World-Fit Analysis:</h4>
-          <p className="italic text-sm">{character.fit_reasoning}</p>
-        </div>
-        <div className="flex justify-center gap-4">
-          <button 
-            onClick={handleStartAdventure} disabled={loading}
-            className="bg-green-600 text-white font-bold py-2 px-6 rounded"
-          >
-            {loading ? 'Starting...' : 'Start First Adventure'}
-          </button>
-          <Link to="/" className="bg-gray-200 py-2 px-6 rounded">Back Home</Link>
-        </div>
-      </div>
+      <main className="character-flow-shell">
+        <p className="loading-copy">Loading world context...</p>
+      </main>
+    );
+  }
+
+  if (!world) {
+    return (
+      <main className="character-flow-shell">
+        <p className="error-banner">{error ?? 'Unable to load this world.'}</p>
+      </main>
     );
   }
 
   return (
-    <div className="max-w-2xl mx-auto p-8 bg-white rounded shadow">
-      <h2 className="text-2xl font-bold mb-2">Create Your Character</h2>
-      <p className="text-gray-600 mb-6 italic">World: {world?.name || '...'}</p>
-      
-      {error && <div className="bg-red-100 text-red-700 p-4 mb-4 rounded">{error}</div>}
-      
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block font-bold mb-1">Name</label>
-            <input 
-              type="text" name="name" value={formData.name} onChange={handleChange} required 
-              className="w-full border p-2 rounded" placeholder="Character Name"
-            />
+    <main className="character-flow-shell">
+      <div className="character-frame">
+        <nav className="character-nav">
+          <Link to="/" className="brand-chip brand-chip-light">
+            <Sparkles size={16} />
+            NarrativeForge
+          </Link>
+          <div className="character-nav-links">
+            <span>Dashboard</span>
+            <span>Worlds</span>
+            <span className="active">Characters</span>
+            <span>Settings</span>
+            <span className="character-avatar-dot">
+              <UserRound size={14} />
+            </span>
           </div>
-          <div>
-            <label className="block font-bold mb-1">Age</label>
-            <input 
-              type="number" name="age" value={formData.age} onChange={handleChange} required 
-              className="w-full border p-2 rounded"
-            />
-          </div>
-        </div>
-        <div>
-          <label className="block font-bold mb-1">Archetype</label>
-          <select name="archetype" value={formData.archetype} onChange={handleChange} className="w-full border p-2 rounded">
-            <option>Rogue</option>
-            <option>Warrior</option>
-            <option>Scholar</option>
-            <option>Survivor</option>
-            <option>Merchant</option>
-            <option>Wanderer</option>
-          </select>
-        </div>
-        <div>
-          <label className="block font-bold mb-1">Backstory</label>
-          <textarea 
-            name="backstory" value={formData.backstory} onChange={handleChange} required
-            className="w-full border p-2 rounded h-24" placeholder="Where do they come from? What are their motivations?"
-          ></textarea>
-        </div>
-        <div>
-          <label className="block font-bold mb-1">Visual Description</label>
-          <textarea 
-            name="visual_description" value={formData.visual_description} onChange={handleChange} required
-            className="w-full border p-2 rounded h-24" placeholder="Describe their appearance for the AI portrait..."
-          ></textarea>
-        </div>
-        <button 
-          type="submit" disabled={loading}
-          className={`bg-blue-600 text-white font-bold py-2 px-4 rounded ${loading ? 'opacity-50' : ''}`}
-        >
-          {loading ? 'Creating Character & Portrait...' : 'Create Character'}
-        </button>
-      </form>
-    </div>
-  );
-};
+        </nav>
 
-export default CreateCharacterForm;
+        <section className="character-header">
+          <h1>Character Origin Forge</h1>
+          <p>
+            Shape the narrative foundation of your existence inside <strong>{world.name}</strong>.
+          </p>
+        </section>
+
+        <section className="character-progress">
+          <div className="character-progress-topline">
+            <div>
+              <Sparkles size={16} />
+              <span>Step {step + 1}: {CHARACTER_STEP_LABELS[step]}</span>
+            </div>
+            <span>{step + 1} of 3</span>
+          </div>
+          <div className="character-progress-bar">
+            <div style={{ width: `${((step + 1) / 3) * 100}%` }} />
+          </div>
+          <div className="character-progress-labels">
+            {CHARACTER_STEP_LABELS.map((label, index) => (
+              <span key={label} className={index === step ? 'active' : ''}>
+                {label}
+              </span>
+            ))}
+          </div>
+        </section>
+
+        {step === 0 && (
+          <section className="character-archetype-stage">
+            <div className="flow-intro left">
+              <h2>Choose an Archetype</h2>
+              <p>The AI suggestions for backstory, style, and portrait will follow this role.</p>
+            </div>
+
+            <div className="character-archetype-grid">
+              {CHARACTER_ARCHETYPES.map((archetype) => {
+                const Icon = ARCHETYPE_ICONS[archetype.id as keyof typeof ARCHETYPE_ICONS] ?? WandSparkles;
+
+                return (
+                  <button
+                    key={archetype.id}
+                    type="button"
+                    className={archetype.id === archetypeId ? 'character-archetype-card selected' : 'character-archetype-card'}
+                    style={cardStyle(archetype.cardArt, archetype.accent)}
+                    onClick={() => setArchetypeId(archetype.id)}
+                  >
+                    <div className="archetype-card-overlay" />
+                    <div className="archetype-card-content">
+                      <Icon size={28} />
+                      <h3>{archetype.label}</h3>
+                      <p>{archetype.description}</p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {step === 1 && (
+          <section className="character-details-layout">
+            <aside className="character-preview-card">
+              <div className="portrait-placeholder">
+                <span>{name.slice(0, 1) || 'U'}</span>
+              </div>
+              <h2>{name || 'Unnamed Character'}</h2>
+              <p>{getArchetypeById(archetypeId).label}</p>
+              <div className="preview-divider" />
+              <div className="origin-traits">
+                <h3>Origin Traits</h3>
+                <ul>
+                  {looks.slice(0, 3).map((cue) => (
+                    <li key={cue}>
+                      <span className="origin-dot" />
+                      {cue}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </aside>
+
+            <div className="character-details-panel">
+              <div className="character-details-heading">
+                <div>
+                  <h2>Refine Details</h2>
+                  <p>Review and refine the AI&apos;s suggestions for your {archetypeId}.</p>
+                </div>
+                <button
+                  type="button"
+                  className="ghost-button"
+                  onClick={() => setDetailSeed((value) => value + 1)}
+                >
+                  Refresh suggestions
+                </button>
+              </div>
+
+              <div className="details-form">
+                <label className="field-group">
+                  <span>Name</span>
+                  <div className="input-with-action">
+                    <input
+                      className="input-shell"
+                      value={name}
+                      onChange={(event) => setName(event.target.value)}
+                    />
+                    <button
+                      type="button"
+                      className="field-action-button"
+                      onClick={() => setDetailSeed((value) => value + 1)}
+                    >
+                      <RefreshCw size={16} />
+                    </button>
+                  </div>
+                </label>
+
+                <div className="slider-group">
+                  <span>Age</span>
+                  <input
+                    type="range"
+                    min={0}
+                    max={2}
+                    step={1}
+                    value={ageIndex}
+                    onChange={(event) => setAgeIndex(Number(event.target.value))}
+                  />
+                  <div className="slider-labels">
+                    {AGE_MARKS.map((mark, index) => (
+                      <span key={mark.label} className={index === ageIndex ? 'active' : ''}>
+                        {mark.label}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <label className="field-group">
+                  <span>Backstory</span>
+                  <div className="textarea-with-action">
+                    <textarea
+                      className="input-shell textarea-shell"
+                      value={backstory}
+                      onChange={(event) => setBackstory(event.target.value)}
+                      rows={5}
+                    />
+                    <button
+                      type="button"
+                      className="field-action-button corner"
+                      onClick={() => setDetailSeed((value) => value + 1)}
+                    >
+                      <RefreshCw size={16} />
+                    </button>
+                  </div>
+                </label>
+
+                <div className="field-group">
+                  <span>Looks</span>
+                  <div className="look-chip-row">
+                    {looks.map((cue) => (
+                      <button
+                        type="button"
+                        key={cue}
+                        className="look-chip"
+                        onClick={() => setLooks((current) => current.filter((item) => item !== cue))}
+                      >
+                        {cue}
+                        <span>&times;</span>
+                      </button>
+                    ))}
+                    <label className="look-chip add">
+                      + add cue
+                      <input
+                        value={lookDraft}
+                        onChange={(event) => setLookDraft(event.target.value)}
+                        onKeyDown={handleLookKeyDown}
+                        onBlur={addLookCue}
+                      />
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {step === 2 && createdCharacter && (
+          <section className="portrait-stage">
+            <header className="flow-intro left">
+              <h2>Choose your portrait</h2>
+              <p>
+                The AI created a portrait set for {createdCharacter.name}. Pick the version that
+                feels right before starting the session.
+              </p>
+            </header>
+
+            <div className="portrait-grid">
+              {PORTRAIT_FILTERS.map((filter, index) => (
+                <button
+                  type="button"
+                  key={filter}
+                  className={selectedPortraitIndex === index ? 'portrait-card selected' : 'portrait-card'}
+                  onClick={() => setSelectedPortraitIndex(index)}
+                >
+                  <img
+                    src={createdCharacter.portrait_url}
+                    alt={createdCharacter.name}
+                    style={{ filter }}
+                  />
+                  <span>Option {index + 1}</span>
+                </button>
+              ))}
+            </div>
+
+            <div className="portrait-fit-reasoning">
+              <p>{createdCharacter.fit_reasoning}</p>
+            </div>
+          </section>
+        )}
+
+        {error && <p className="error-banner">{error}</p>}
+
+        <footer className="flow-footer character-footer">
+          <button
+            type="button"
+            className="inline-back-link muted"
+            onClick={() => (step > 0 ? setStep((current) => current - 1) : navigate(`/create-world`))}
+          >
+            <ArrowLeft size={16} />
+            Back
+          </button>
+
+          {step < 1 && (
+            <button type="button" className="primary-button" onClick={() => setStep(1)}>
+              Continue
+              <ArrowRight size={16} />
+            </button>
+          )}
+
+          {step === 1 && (
+            <button
+              type="button"
+              className="primary-button"
+              onClick={() => void handleGeneratePortraits()}
+              disabled={submitting || !name.trim() || !backstory.trim()}
+            >
+              {submitting ? 'Generating...' : 'Generate Portraits'}
+              {!submitting && <ArrowRight size={16} />}
+            </button>
+          )}
+
+          {step === 2 && createdCharacter && (
+            <button
+              type="button"
+              className="primary-button"
+              onClick={() => void handleConfirmCharacter()}
+              disabled={submitting}
+            >
+              {submitting ? 'Starting Session...' : 'Confirm Character'}
+              {!submitting && <ArrowRight size={16} />}
+            </button>
+          )}
+        </footer>
+      </div>
+    </main>
+  );
+}

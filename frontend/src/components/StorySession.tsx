@@ -1,119 +1,209 @@
-import { useState, useEffect } from 'react';
-import axios from 'axios';
-import { useParams, Link } from 'react-router-dom';
+import { ArrowLeft, Castle, MapPin, UserRound } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { concludeSession, getCharacter, getSession, getWorld, submitChoice } from '../lib/api';
+import { getThemeClassForWorld, splitSummary } from '../lib/storyContent';
+import type { Character, Session, World } from '../lib/types';
 
-const API_BASE_URL = 'http://localhost:8000';
+const TARGET_SCENE_COUNT = 8;
 
-const StorySession = () => {
+export default function StorySession() {
   const { sessionId } = useParams();
-  const [session, setSession] = useState<any>(null);
+  const navigate = useNavigate();
+  const [session, setSession] = useState<Session | null>(null);
+  const [world, setWorld] = useState<World | null>(null);
+  const [character, setCharacter] = useState<Character | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [processingChoice, setProcessingChoice] = useState(false);
-
-  const fetchSession = async () => {
-    try {
-      const response = await axios.get(`${API_BASE_URL}/api/sessions/${sessionId}`);
-      setSession(response.data);
-    } catch (err) {
-      setError('Failed to load story session.');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchSession();
+    async function loadSessionContext() {
+      if (!sessionId) {
+        setError('Missing session ID.');
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const sessionResponse = await getSession(sessionId);
+        const [worldResponse, characterResponse] = await Promise.all([
+          getWorld(sessionResponse.world_id),
+          getCharacter(sessionResponse.character_id),
+        ]);
+        setSession(sessionResponse);
+        setWorld(worldResponse);
+        setCharacter(characterResponse);
+      } catch (loadError) {
+        setError(loadError instanceof Error ? loadError.message : 'Failed to load story session.');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    void loadSessionContext();
   }, [sessionId]);
 
-  const handleChoice = async (choiceId: number) => {
+  async function handleChoice(choiceId: number) {
+    if (!sessionId) {
+      return;
+    }
+
     setProcessingChoice(true);
     setError(null);
+
     try {
-      const response = await axios.post(`${API_BASE_URL}/api/sessions/${sessionId}/choices`, {
-        choice_id: choiceId
-      });
-      setSession(response.data);
-    } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to process choice.');
+      const response = await submitChoice(sessionId, choiceId);
+      setSession(response);
+    } catch (submitError) {
+      setError(submitError instanceof Error ? submitError.message : 'Failed to process choice.');
     } finally {
       setProcessingChoice(false);
     }
-  };
+  }
 
-  const handleConclude = async () => {
+  async function handleConclude() {
+    if (!sessionId) {
+      return;
+    }
+
     setProcessingChoice(true);
     setError(null);
+
     try {
-      const response = await axios.post(`${API_BASE_URL}/api/sessions/${sessionId}/conclude`);
-      setSession(response.data);
-    } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to conclude session.');
+      const response = await concludeSession(sessionId);
+      setSession(response);
+    } catch (submitError) {
+      setError(submitError instanceof Error ? submitError.message : 'Failed to conclude session.');
     } finally {
       setProcessingChoice(false);
     }
-  };
+  }
 
-  if (loading) return <div className="p-8 text-center">Entering the story...</div>;
-  if (!session) return <div className="p-8 text-center">Session not found.</div>;
-
-  const { current_scene, status, summary, history } = session;
-
-  if (status === 'completed') {
+  if (loading) {
     return (
-      <div className="max-w-3xl mx-auto p-8 bg-white rounded shadow">
-        <h2 className="text-3xl font-bold mb-6 text-center">Adventure Concluded</h2>
-        <div className="bg-amber-50 p-6 rounded mb-8 border-l-4 border-amber-500">
-          <h3 className="font-bold text-xl mb-2">The Chronicle of Your Journey</h3>
-          <p className="text-lg leading-relaxed">{summary}</p>
-        </div>
-        <div className="text-center">
-          <Link to="/" className="bg-blue-600 text-white font-bold py-3 px-8 rounded">Return Home</Link>
-        </div>
-      </div>
+      <main className="session-shell theme-medieval">
+        <p className="loading-copy">Entering the story...</p>
+      </main>
+    );
+  }
+
+  if (!session || !world || !character) {
+    return (
+      <main className="session-shell theme-medieval">
+        <p className="error-banner">{error ?? 'Session not found.'}</p>
+      </main>
+    );
+  }
+
+  const summaryHighlights = splitSummary(session.summary);
+
+  if (session.status === 'completed') {
+    return (
+      <main className={`session-shell ${getThemeClassForWorld(world)}`}>
+        <section className="session-complete-card">
+          <p className="section-eyebrow">Session Complete</p>
+          <h1>Adventure Concluded</h1>
+          <p className="session-summary-copy">{session.summary}</p>
+
+          {summaryHighlights.length > 0 && (
+            <div className="session-world-changes">
+              <h2>World changes</h2>
+              <ul>
+                {summaryHighlights.map((sentence) => (
+                  <li key={sentence}>{sentence}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <div className="session-complete-actions">
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={() => navigate(`/chronicle/${world.id}`)}
+            >
+              View Chronicle
+            </button>
+            <Link to="/" className="primary-button">
+              Return to World
+            </Link>
+          </div>
+        </section>
+      </main>
     );
   }
 
   return (
-    <div className="max-w-3xl mx-auto p-8 bg-white rounded shadow">
-      {error && <div className="bg-red-100 text-red-700 p-4 mb-4 rounded">{error}</div>}
-      
-      <div className="mb-8">
-        <div className="flex justify-between items-center mb-4">
-          <span className="text-sm font-bold text-gray-500 uppercase tracking-widest">Scene {current_scene.scene_number}</span>
-          <span className="text-xs text-gray-400 italic">{history.length} events recorded</span>
+    <main className={`session-shell ${getThemeClassForWorld(world)}`}>
+      <header className="session-header">
+        <div className="session-header-group">
+          <Castle size={16} />
+          <span>{world.name}</span>
+          <span className="summary-dot" />
+          <MapPin size={16} />
+          <span>{world.environment}</span>
         </div>
-        <div className="text-xl leading-relaxed text-gray-800 space-y-4 whitespace-pre-wrap">
-          {current_scene.narrative}
+        <div className="session-header-group">
+          <span>{character.name}</span>
+          <span className="summary-dot" />
+          <span>{character.archetype}</span>
+          <span className="session-avatar">
+            <UserRound size={15} />
+          </span>
         </div>
-      </div>
+      </header>
 
-      <div className="grid gap-4 mt-8">
-        {current_scene.choices.map((choice: any) => (
-          <button
-            key={choice.id}
-            onClick={() => handleChoice(choice.id)}
-            disabled={processingChoice}
-            className={`text-left p-4 border-2 border-blue-100 hover:border-blue-500 hover:bg-blue-50 rounded-xl transition-all font-medium text-lg ${processingChoice ? 'opacity-50 grayscale' : ''}`}
-          >
-            {choice.text}
-          </button>
-        ))}
-      </div>
+      <section className="session-stage">
+        {error && <p className="error-banner">{error}</p>}
 
-      {current_scene.scene_number >= 5 && (
-        <div className="mt-12 pt-8 border-t text-center">
-          <p className="text-gray-500 mb-4 italic text-sm">You feel the narrative reaching a natural conclusion...</p>
-          <button 
-            onClick={handleConclude} disabled={processingChoice}
-            className="bg-amber-600 text-white font-bold py-2 px-6 rounded hover:bg-amber-700"
-          >
-            {processingChoice ? 'Concluding...' : 'Bring Adventure to a Close'}
-          </button>
+        <div className="session-scene-count">
+          Scene {session.current_scene.scene_number} of {TARGET_SCENE_COUNT}
         </div>
-      )}
-    </div>
+
+        <article className="session-story-text">
+          {session.current_scene.narrative.split('\n').map((paragraph) => (
+            <p key={paragraph}>{paragraph}</p>
+          ))}
+          <p className="session-story-prompt">What do you do?</p>
+        </article>
+
+        <div className="session-choices">
+          {session.current_scene.choices.map((choice, index) => (
+            <button
+              type="button"
+              key={choice.id}
+              className="session-choice-button"
+              onClick={() => void handleChoice(choice.id)}
+              disabled={processingChoice}
+            >
+              <span className="session-choice-letter">
+                {String.fromCharCode(65 + index)}
+              </span>
+              <span>{choice.text}</span>
+            </button>
+          ))}
+        </div>
+
+        {session.current_scene.scene_number >= 5 && (
+          <div className="session-conclude-panel">
+            <p>The narrative is reaching a natural conclusion.</p>
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={() => void handleConclude()}
+              disabled={processingChoice}
+            >
+              {processingChoice ? 'Concluding...' : 'Bring Adventure to a Close'}
+            </button>
+          </div>
+        )}
+
+        <button type="button" className="session-escape-link" onClick={() => navigate(-1)}>
+          <ArrowLeft size={16} />
+          Leave session
+        </button>
+      </section>
+    </main>
   );
-};
-
-export default StorySession;
+}
