@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import CreateWorldForm from './components/CreateWorldForm';
 import CreateCharacterForm from './components/CreateCharacterForm';
+import StorySession from './components/StorySession';
 
 const Home = () => (
   <div className="p-8 text-center max-w-4xl mx-auto">
@@ -27,6 +28,12 @@ const CreateCharacter = () => (
   </div>
 );
 
+const SessionPage = () => (
+  <div className="p-8 bg-gray-100 min-h-screen">
+    <StorySession />
+  </div>
+);
+
 function App() {
   return (
     <Router>
@@ -38,6 +45,7 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/create-world" element={<CreateWorld />} />
           <Route path="/create-character/:worldId" element={<CreateCharacter />} />
+          <Route path="/session/:sessionId" element={<SessionPage />} />
         </Routes>
       </div>
     </Router>

@@ -51,6 +51,22 @@ const CreateCharacterForm = () => {
 
   if (!world && !error) return <div>Loading world context...</div>;
 
+  const handleStartAdventure = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await axios.post(`${API_BASE_URL}/api/sessions`, {
+        character_id: character.id,
+        world_id: worldId
+      });
+      navigate(`/session/${response.data.id}`);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to start adventure.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (character) {
     return (
       <div className="max-w-2xl mx-auto p-8 bg-white rounded shadow text-center">
@@ -65,7 +81,12 @@ const CreateCharacterForm = () => {
           <p className="italic text-sm">{character.fit_reasoning}</p>
         </div>
         <div className="flex justify-center gap-4">
-          <button className="bg-green-600 text-white font-bold py-2 px-6 rounded">Start First Adventure</button>
+          <button 
+            onClick={handleStartAdventure} disabled={loading}
+            className="bg-green-600 text-white font-bold py-2 px-6 rounded"
+          >
+            {loading ? 'Starting...' : 'Start First Adventure'}
+          </button>
           <Link to="/" className="bg-gray-200 py-2 px-6 rounded">Back Home</Link>
         </div>
       </div>
