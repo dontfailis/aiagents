@@ -25,3 +25,23 @@ variable "apphub_application_id" {
   description = "The AppHub application identifier"
   type        = string
 }
+variable "agent_createworld_url" {
+  description = "The service URL for the agent-createworld Cloud Run service."
+  type        = string
+  default     = ""
+}
+variable "agent_createcharacter_url" {
+  description = "The service URL for the agent-createcharacter Cloud Run service."
+  type        = string
+  default     = ""
+}
+variable "agent_narrative_url" {
+  description = "The service URL for the agent-narrative Cloud Run service."
+  type        = string
+  default     = ""
+}
+variable "agent_optiongen_url" {
+  description = "The service URL for the agent-optiongeneration Cloud Run service."
+  type        = string
+  default     = ""
+}
