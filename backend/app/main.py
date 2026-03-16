@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, List
 import uuid
@@ -8,6 +9,15 @@ from .database import db, firestore
 from .ai import generate_world_intro, validate_character_fit, generate_character_portrait, generate_next_scene, generate_session_summary
 
 app = FastAPI()
+
+# Configure CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Pydantic Models
 class WorldCreate(BaseModel):
