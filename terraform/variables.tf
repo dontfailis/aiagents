@@ -63,3 +63,13 @@ variable "artifact_registry_repo" {
   type        = string
   default     = "cloud-run-source-deploy"
 }
+
+variable "github_app_installation_id" {
+  description = "Installation ID of the Cloud Build GitHub App on your GitHub account/org. Found in the GitHub App settings URL."
+  type        = number
+}
+
+variable "github_oauth_token_secret_version" {
+  description = "Full Secret Manager secret version resource name holding the GitHub OAuth token used by the Cloud Build connection. Format: projects/PROJECT/secrets/SECRET/versions/VERSION"
+  type        = string
+}

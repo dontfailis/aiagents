@@ -53,6 +53,35 @@ resource "google_artifact_registry_repository" "agents" {
   depends_on = [google_project_service.artifactregistry]
 }
 
+# 2nd-gen Cloud Build GitHub connection.
+# Before running `terraform apply` you must authorise the Cloud Build GitHub App
+# once in the GCP Console (Cloud Build → Repositories → Connect Repository).
+# After that Terraform can manage triggers against the connected repo.
+resource "google_cloudbuildv2_connection" "github" {
+  project  = var.project_id
+  location = var.location
+  name     = "github-connection"
+
+  github_config {
+    app_installation_id = var.github_app_installation_id
+
+    authorizer_credential {
+      oauth_token_secret_version = var.github_oauth_token_secret_version
+    }
+  }
+
+  depends_on = [google_project_service.cloudbuild]
+}
+
+# Link the specific GitHub repository to the connection
+resource "google_cloudbuildv2_repository" "agent_repo" {
+  project           = var.project_id
+  location          = var.location
+  name              = var.github_repo
+  parent_connection = google_cloudbuildv2_connection.github.name
+  remote_uri        = "https://github.com/${var.github_owner}/${var.github_repo}.git"
+}
+
 # Cloud Build trigger per agent — fires on push to main for the agent folder
 resource "google_cloudbuild_trigger" "agent_triggers" {
   for_each = local.agents
@@ -65,9 +94,9 @@ resource "google_cloudbuild_trigger" "agent_triggers" {
   # Only watch changes inside the specific agent folder
   included_files = ["${each.value.folder}/**"]
 
-  github {
-    owner = var.github_owner
-    name  = var.github_repo
+  # 2nd-gen trigger: reference the connected repository
+  repository_event_config {
+    repository = google_cloudbuildv2_repository.agent_repo.id
 
     push {
       branch = "^main$"
@@ -83,5 +112,5 @@ resource "google_cloudbuild_trigger" "agent_triggers" {
     _SERVICE_NAME = each.value.service_name
   }
 
-  depends_on = [google_project_service.cloudbuild]
+  depends_on = [google_cloudbuildv2_repository.agent_repo]
 }
