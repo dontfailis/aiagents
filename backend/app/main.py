@@ -29,6 +29,9 @@ class SessionCreate(BaseModel):
     character_id: str
     world_id: str
 
+class ChoiceSubmission(BaseModel):
+    choice_id: int
+
 # Helper Functions
 def generate_share_code(length=8):
     alphabet = string.ascii_uppercase + string.digits
@@ -120,7 +123,6 @@ async def get_character(char_id: str):
 # Sessions API
 @app.post("/api/sessions", status_code=201)
 async def create_session(session_data: SessionCreate):
-    # Validate character and world
     char_doc = db.collection("characters").document(session_data.character_id).get()
     if not char_doc.exists:
         raise HTTPException(status_code=404, detail="Character not found")
@@ -132,8 +134,6 @@ async def create_session(session_data: SessionCreate):
     world_data = world_doc.to_dict()
 
     session_id = str(uuid.uuid4())
-    
-    # Generate the first scene using AI
     first_scene = await generate_next_scene(world_data, char_data)
     first_scene["scene_number"] = 1
     
@@ -148,7 +148,6 @@ async def create_session(session_data: SessionCreate):
     }
     
     db.collection("sessions").document(session_id).set(session_dict)
-    
     return {**session_dict, "created_at": "2026-03-16T21:35:00Z"}
 
 @app.get("/api/sessions/{session_id}")
@@ -160,3 +159,53 @@ async def get_session(session_id: str):
     if "created_at" in data and not isinstance(data["created_at"], str):
         data["created_at"] = data["created_at"].isoformat() if hasattr(data["created_at"], "isoformat") else str(data["created_at"])
     return data
+
+@app.post("/api/sessions/{session_id}/choices")
+async def submit_choice(session_id: str, submission: ChoiceSubmission):
+    doc_ref = db.collection("sessions").document(session_id)
+    doc = doc_ref.get()
+    if not doc.exists:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    session_data = doc.to_dict()
+    if session_data["status"] != "in_progress":
+        raise HTTPException(status_code=400, detail="Session is already finished")
+    
+    # 1. Find the selected choice text
+    current_scene = session_data["current_scene"]
+    selected_choice = next((c for c in current_scene["choices"] if c["id"] == submission.choice_id), None)
+    if not selected_choice:
+        raise HTTPException(status_code=400, detail="Invalid choice ID")
+    
+    # 2. Get world and character context
+    world_doc = db.collection("worlds").document(session_data["world_id"]).get()
+    char_doc = db.collection("characters").document(session_data["character_id"]).get()
+    
+    # 3. Generate next scene
+    next_scene = await generate_next_scene(
+        world_doc.to_dict(), 
+        char_doc.to_dict(), 
+        session_data["history"], 
+        selected_choice["text"]
+    )
+    next_scene["scene_number"] = current_scene["scene_number"] + 1
+    
+    # 4. Update history
+    history_entry = {
+        "scene_number": current_scene["scene_number"],
+        "narrative": current_scene["narrative"],
+        "choice": selected_choice["text"]
+    }
+    new_history = session_data["history"] + [history_entry]
+    
+    # 5. Save updates
+    update_data = {
+        "current_scene": next_scene,
+        "history": new_history,
+        "updated_at": firestore.SERVER_TIMESTAMP
+    }
+    
+    doc_ref.update(update_data)
+    
+    # Response
+    return {**session_data, **update_data, "updated_at": "2026-03-16T21:40:00Z"}

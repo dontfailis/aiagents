@@ -40,5 +40,22 @@ class TestSessions(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()['id'], session_id)
 
+    def test_submit_choice(self):
+        create_resp = self.client.post('/api/sessions', json={
+            'character_id': self.char_id,
+            'world_id': self.world_id
+        })
+        session_id = create_resp.json()['id']
+        choice_id = create_resp.json()['current_scene']['choices'][0]['id']
+        
+        response = self.client.post(f'/api/sessions/{session_id}/choices', json={
+            'choice_id': choice_id
+        })
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertIn('current_scene', data)
+        self.assertEqual(data['current_scene']['scene_number'], 2)
+        self.assertTrue(len(data['history']) > 0)
+
 if __name__ == '__main__':
     unittest.main()

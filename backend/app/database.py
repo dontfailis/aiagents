@@ -51,6 +51,18 @@ class MockDocumentReference:
         db_data[self.collection.name][self.id] = serializable_data
         self.collection._save_db(db_data)
 
+    def update(self, data):
+        db_data = self.collection._load_db()
+        if self.collection.name in db_data and self.id in db_data[self.collection.name]:
+            current_data = db_data[self.collection.name][self.id]
+            for k, v in data.items():
+                if hasattr(v, '__module__') and 'google.cloud.firestore' in v.__module__:
+                    current_data[k] = "2026-03-16T21:00:00Z"
+                else:
+                    current_data[k] = v
+            db_data[self.collection.name][self.id] = current_data
+            self.collection._save_db(db_data)
+
     def get(self):
         db_data = self.collection._load_db()
         data = db_data.get(self.collection.name, {}).get(self.id)
