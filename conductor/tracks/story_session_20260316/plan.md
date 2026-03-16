@@ -1,15 +1,15 @@
 # Implementation Plan: Story Session Engine
 
 ## Phase 1: Session Management Backend
-- [ ] **Task: Session Data Model and API**
-    - [ ] Write tests for session initialization (POST /api/sessions).
-    - [ ] Implement session creation logic and storage.
-    - [ ] Write tests for session retrieval (GET /api/sessions/:id).
-    - [ ] Implement session retrieval logic.
-- [ ] **Task: AI Scene Generation Service**
-    - [ ] Write tests for AI scene generation prompt and response parsing.
-    - [ ] Implement Gemini-powered scene generator (narrative + choices).
-- [ ] **Task: Conductor - User Manual Verification 'Session Management Backend' (Protocol in workflow.md)**
+- [x] **Task: Session Data Model and API** faeac9c
+    - [x] Write tests for session initialization (POST /api/sessions).
+    - [x] Implement session creation logic and storage.
+    - [x] Write tests for session retrieval (GET /api/sessions/:id).
+    - [x] Implement session retrieval logic.
+- [x] **Task: AI Scene Generation Service** d5da6f5
+    - [x] Write tests for AI scene generation prompt and response parsing.
+    - [x] Implement Gemini-powered scene generator (narrative + choices).
+- [~] **Task: Conductor - User Manual Verification 'Session Management Backend' (Protocol in workflow.md)**
 
 ## Phase 2: Session Progression Logic
 - [ ] **Task: Choice Processing API**
