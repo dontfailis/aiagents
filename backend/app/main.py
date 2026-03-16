@@ -5,8 +5,8 @@ from typing import Optional, List
 import uuid
 import secrets
 import string
-from .database import db, firestore
-from .ai import generate_world_intro, validate_character_fit, generate_character_portrait, generate_next_scene, generate_session_summary
+from database import db, firestore
+from ai import generate_world_intro, validate_character_fit, generate_character_portrait, generate_next_scene, generate_session_summary
 
 app = FastAPI()
 

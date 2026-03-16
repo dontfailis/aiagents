@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Character Creation: Details</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<style type="text/tailwindcss">
+        :root {
+            --bg-color: #242222;
+            --card-bg: #181922;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent: #d4af37;--accent-hover: #b5952f;
+            --border-color: #334155;
+            --input-bg: #0f172a;
+        }
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+        .input-field {
+            @apply w-full bg-[var(--input-bg)] border border-[var(--border-color)] rounded-lg px-4 py-3 text-[var(--text-main)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)] focus:border-transparent transition-colors;
+        }
+        .icon-btn {
+            @apply text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors p-2 rounded-full hover:bg-[var(--border-color)] flex items-center justify-center;
+        }
+        .tag-chip {
+            @apply flex items-center gap-1 px-3 py-1.5 bg-transparent text-sm rounded-full text-[var(--text-muted)] border border-[var(--border-color)] hover:border-[var(--text-main)] hover:text-[var(--text-main)] transition-colors cursor-pointer;
+        }
+        .tag-add {
+            @apply flex items-center gap-1 px-3 py-1.5 border border-dashed border-[var(--border-color)] text-[var(--text-muted)] text-sm rounded-full hover:text-[var(--text-main)] hover:border-[var(--text-main)] transition-colors cursor-pointer;
+        }
+        input[type=range] {
+            -webkit-appearance: none;
+            @apply w-full h-1 bg-[var(--border-color)] rounded-full outline-none;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            @apply w-4 h-4 rounded-full bg-[var(--accent)] cursor-pointer hover:bg-[var(--accent-hover)] transition-colors;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+<nav class="w-full px-8 py-4 flex justify-between items-center border-b border-[var(--border-color)]">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[var(--accent)]">auto_awesome</span>
+<span class="text-xl font-bold tracking-tight text-white">NarrativeForge</span>
+</div>
+<div class="flex items-center gap-8">
+<a class="text-sm font-medium text-[var(--text-muted)] hover:text-white transition-colors" href="#">Dashboard</a>
+<a class="text-sm font-medium text-[var(--text-muted)] hover:text-white transition-colors" href="#">Worlds</a>
+<a class="text-sm font-medium text-[var(--accent)] border-b-2 border-[var(--accent)] pb-1" href="#">Characters</a>
+<a class="text-sm font-medium text-[var(--text-muted)] hover:text-white transition-colors" href="#">Settings</a>
+<div class="w-8 h-8 rounded-full bg-[#fde68a] flex items-center justify-center ml-4 cursor-pointer">
+<span class="material-symbols-outlined text-gray-800 text-sm">person</span>
+</div>
+</div>
+</nav>
+<div class="flex-grow max-w-6xl w-full mx-auto p-8 flex flex-col gap-10">
+<header class="space-y-2">
+<h1 class="text-4xl font-bold tracking-tight text-white">Character Origin Forge</h1>
+<p class="text-[var(--text-muted)] text-lg">Shape the narrative foundation of your existence.</p>
+</header>
+<div class="space-y-4">
+<div class="flex justify-between items-center text-sm font-semibold tracking-widest uppercase">
+<div class="flex items-center gap-2 text-white">
+<span class="material-symbols-outlined text-[var(--accent)] text-lg">auto_awesome</span>
+<span>Step 2: Details</span>
+</div>
+<span class="text-[var(--text-muted)]">2 of 3</span>
+</div>
+<div class="w-full h-1 bg-[var(--border-color)] rounded-full flex">
+<div class="h-full bg-[var(--accent)] rounded-full w-[66%]"></div>
+</div>
+<div class="flex justify-between text-xs font-medium text-[var(--text-muted)] mt-2">
+<span>Lineage</span>
+<span class="text-[var(--text-main)]">Details</span>
+<span>Motivation</span>
+</div>
+</div>
+<div class="flex gap-12 items-start mt-6">
+<aside class="w-80 shrink-0 bg-[var(--card-bg)] rounded-2xl p-6 shadow-xl flex flex-col items-center border border-[var(--border-color)] relative">
+<div class="w-48 h-64 rounded-xl overflow-hidden mb-6 bg-gray-800 relative">
+<img alt="Character Portrait" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCWshiEDWx4DTL0Q3ue_TE0ZdHZsJdkMPS0R_XHuKQvTgoyifBtEFYy6xkXYlKMICjPGcjl-_AOwtsOidNC6Emvr6zkUzNyf9zSSaDHXRn9puppkVC37Hzm6YG0KrVEZQB1JXDHPlkdM7ZwpJm0sq9A1MYIBjdoBx-fbtIdSQa9pfLnZIKg7o8pmyB_DBtwu8CAc13VMwSjR6upJfTc6EsTiGneK4VAoWRdadMCMopjDTFMrROHZq99IygwnNaNnD_lobfGkd0kkBJ7"/>
+<button class="absolute bottom-[-12px] right-[-12px] w-8 h-8 bg-[var(--accent)] rounded-full flex items-center justify-center border-4 border-[var(--card-bg)]">
+<span class="material-symbols-outlined text-white text-sm">settings</span>
+</button>
+</div>
+<h2 class="text-xl font-semibold text-center mb-1">Unnamed Character</h2>
+<span class="text-xs font-bold text-[var(--accent)] uppercase tracking-wider mb-8">Awaiting Details</span>
+<div class="w-full border-t border-[var(--border-color)] pt-6">
+<h3 class="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider mb-4">Origin Traits</h3>
+<ul class="space-y-4">
+<li class="flex items-center gap-3 text-sm text-[var(--text-muted)]">
+<div class="w-4 h-4 rounded-full bg-[var(--border-color)]"></div>
+                            Bloodline Unknown
+                        </li>
+<li class="flex items-center gap-3 text-sm text-[var(--text-muted)]">
+<div class="w-4 h-4 rounded-full bg-[var(--border-color)]"></div>
+                            Past Shrouded
+                        </li>
+<li class="flex items-center gap-3 text-sm text-[var(--text-muted)]">
+<div class="w-4 h-4 rounded-full bg-[var(--border-color)]"></div>
+                            Drive Unclear
+                        </li>
+</ul>
+</div>
+</aside>
+<main class="flex-grow space-y-10">
+<div class="space-y-2">
+<h2 class="text-2xl font-bold">Refine Details</h2>
+<p class="text-[var(--text-muted)]">Review and refine the AI's suggestions for your Rogue.</p>
+</div>
+<div class="bg-[var(--card-bg)] p-8 rounded-2xl shadow-lg border border-[var(--border-color)] space-y-8">
+<div class="space-y-2">
+<label class="block text-sm font-medium text-[var(--text-muted)]" for="char-name">Name</label>
+<div class="relative">
+<input class="input-field pr-12" id="char-name" type="text" value="Kira Ashveil"/>
+<button class="absolute right-2 top-1/2 -translate-y-1/2 icon-btn" title="Regenerate Name">
+<span class="material-symbols-outlined text-xl">refresh</span>
+</button>
+</div>
+</div>
+<div class="space-y-4">
+<label class="block text-sm font-medium text-[var(--text-muted)]">Age</label>
+<div class="px-2">
+<input class="w-full" max="3" min="1" step="1" type="range" value="2"/>
+<div class="flex justify-between mt-3 text-sm text-[var(--text-muted)]">
+<span class="cursor-pointer hover:text-[var(--text-main)]">Young</span>
+<span class="cursor-pointer text-[var(--text-main)] font-medium">Adult</span>
+<span class="cursor-pointer hover:text-[var(--text-main)]">Veteran</span>
+</div>
+</div>
+</div>
+<div class="space-y-2">
+<div class="flex justify-between items-end">
+<label class="block text-sm font-medium text-[var(--text-muted)]" for="char-backstory">Backstory</label>
+<button class="icon-btn -mb-2" title="Regenerate Backstory">
+<span class="material-symbols-outlined text-xl">refresh</span>
+</button>
+</div>
+<textarea class="input-field resize-none leading-relaxed bg-[var(--input-bg)]" id="char-backstory" rows="4">Once a guild thief cast out for knowing too much, Kira now trades secrets for coin in harbor alleys.</textarea>
+</div>
+<div class="space-y-3">
+<label class="block text-sm font-medium text-[var(--text-muted)]">Looks</label>
+<div class="flex flex-wrap gap-2">
+<div class="tag-chip">
+<span>scarred</span>
+<span class="material-symbols-outlined text-sm">close</span>
+</div>
+<div class="tag-chip">
+<span>cloaked</span>
+<span class="material-symbols-outlined text-sm">close</span>
+</div>
+<div class="tag-chip">
+<span>dark-haired</span>
+<span class="material-symbols-outlined text-sm">close</span>
+</div>
+<div class="tag-add">
+<span class="material-symbols-outlined text-sm">add</span>
+<span>add cue</span>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+<footer class="mt-auto py-8 flex justify-between items-center w-full">
+<button class="flex items-center gap-2 text-[var(--text-muted)] hover:text-white font-medium transition-colors text-sm">
+<span class="material-symbols-outlined text-lg">arrow_back</span>
+                Back
+            </button>
+<button class="px-6 py-3 bg-[#181922] border border-[#334155] hover:border-[var(--text-muted)] text-[var(--text-muted)] hover:text-white font-medium rounded-lg transition-all flex items-center gap-2 text-sm uppercase tracking-wider">
+                Generate Portraits
+                <span class="material-symbols-outlined text-lg">arrow_forward</span>
+</button>
+</footer>
+</div>
+
+</body></html>

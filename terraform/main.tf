@@ -4,8 +4,8 @@
 
 module "cloud-run-1" {
   source                        = "github.com/GoogleCloudPlatform/terraform-google-cloud-run//modules/v2?ref=v0.23.0"
-  project_id                    = var.cloud-run-1_project_id
-  location                      = var.cloud-run-1_location
+  project_id                    = var.project_id
+  location                      = var.location
   service_name                  = "agent-mcp"
   containers                    = [{"container_image" = "us-docker.pkg.dev/cloudrun/container/hello", "container_name" = "service-container", "env_vars" = merge({"memorystore_1_REDIS_AUTH_STRING" = module.memorystore-1.auth_string, "memorystore_1_REDIS_HOST" = module.memorystore-1.host, "memorystore_1_REDIS_PORT" = module.memorystore-1.env_vars.REDIS_PORT}, {"firestore_1_FIRESTORE_DATABASE_ID" = module.firestore-1.database_id}), "ports" = {"container_port" = 8080, "name" = "http1"}, "resources" = {"cpu_idle" = true, "startup_cpu_boost" = false}}]
   gpu_zonal_redundancy_disabled = false
@@ -29,7 +29,7 @@ module "cloud-run-1" {
 module "lb-backend-1" {
   source     = "github.com/terraform-google-modules/terraform-google-lb-http//modules/backend?ref=v13.2.0"
   name       = var.lb-backend-1_name
-  project_id = var.lb-backend-1_project_id
+  project_id = var.project_id
   serverless_neg_backends = [{
     region          = module.cloud-run-6.location
     service_name    = module.cloud-run-6.service_name
@@ -39,10 +39,10 @@ module "lb-backend-1" {
 }
 module "cloud-run-2" {
   source                        = "github.com/GoogleCloudPlatform/terraform-google-cloud-run//modules/v2?ref=v0.23.0"
-  project_id                    = var.cloud-run-2_project_id
-  location                      = var.cloud-run-2_location
+  project_id                    = var.project_id
+  location                      = var.location
   service_name                  = "agent-createworld"
-  containers                    = [{"resources" = {"startup_cpu_boost" = false, "cpu_idle" = true}, "container_image" = "us-docker.pkg.dev/cloudrun/container/hello", "container_name" = "service-container", "env_vars" = {"cloud_run_1_SERVICE_ENDPOINT" = module.cloud-run-1.service_uri}, "ports" = {"container_port" = 8080, "name" = "http1"}}]
+  containers                    = [{"resources" = {"startup_cpu_boost" = false, "cpu_idle" = true}, "container_image" = "us-docker.pkg.dev/cloudrun/container/hello", "container_name" = "service-container", "env_vars" = {"cloud_run_1_SERVICE_ENDPOINT" = module.cloud-run-1.service_uri, "AGENT_CREATEWORLD_URL" = var.agent_createworld_url, "AGENT_CREATECHARACTER_URL" = var.agent_createcharacter_url, "AGENT_NARRATIVE_URL" = var.agent_narrative_url, "AGENT_OPTIONGEN_URL" = var.agent_optiongen_url}, "ports" = {"container_port" = 8080, "name" = "http1"}}]
   gpu_zonal_redundancy_disabled = false
   service_account_project_roles = ["roles/run.invoker"]
   vpc_access = {
@@ -63,10 +63,10 @@ module "cloud-run-2" {
 }
 module "cloud-run-3" {
   source                        = "github.com/GoogleCloudPlatform/terraform-google-cloud-run//modules/v2?ref=v0.23.0"
-  project_id                    = var.cloud-run-3_project_id
-  location                      = var.cloud-run-3_location
+  project_id                    = var.project_id
+  location                      = var.location
   service_name                  = "agent-createcharacter"
-  containers                    = [{"ports" = {"container_port" = 8080, "name" = "http1"}, "resources" = {"cpu_idle" = true, "startup_cpu_boost" = false}, "container_image" = "us-docker.pkg.dev/cloudrun/container/hello", "container_name" = "service-container", "env_vars" = {"cloud_run_1_SERVICE_ENDPOINT" = module.cloud-run-1.service_uri}}]
+  containers                    = [{"ports" = {"container_port" = 8080, "name" = "http1"}, "resources" = {"cpu_idle" = true, "startup_cpu_boost" = false}, "container_image" = "us-docker.pkg.dev/cloudrun/container/hello", "container_name" = "service-container", "env_vars" = {"cloud_run_1_SERVICE_ENDPOINT" = module.cloud-run-1.service_uri, "AGENT_CREATEWORLD_URL" = var.agent_createworld_url, "AGENT_CREATECHARACTER_URL" = var.agent_createcharacter_url, "AGENT_NARRATIVE_URL" = var.agent_narrative_url, "AGENT_OPTIONGEN_URL" = var.agent_optiongen_url}}]
   gpu_zonal_redundancy_disabled = false
   service_account_project_roles = ["roles/run.invoker"]
   vpc_access = {
@@ -87,10 +87,10 @@ module "cloud-run-3" {
 }
 module "cloud-run-4" {
   source                        = "github.com/GoogleCloudPlatform/terraform-google-cloud-run//modules/v2?ref=v0.23.0"
-  project_id                    = var.cloud-run-4_project_id
-  location                      = var.cloud-run-4_location
+  project_id                    = var.project_id
+  location                      = var.location
   service_name                  = "agent-narrative"
-  containers                    = [{"env_vars" = {"cloud_run_1_SERVICE_ENDPOINT" = module.cloud-run-1.service_uri}, "ports" = {"container_port" = 8080, "name" = "http1"}, "resources" = {"cpu_idle" = true, "startup_cpu_boost" = false}, "container_image" = "us-docker.pkg.dev/cloudrun/container/hello", "container_name" = "service-container"}]
+  containers                    = [{"env_vars" = {"cloud_run_1_SERVICE_ENDPOINT" = module.cloud-run-1.service_uri, "AGENT_CREATEWORLD_URL" = var.agent_createworld_url, "AGENT_CREATECHARACTER_URL" = var.agent_createcharacter_url, "AGENT_NARRATIVE_URL" = var.agent_narrative_url, "AGENT_OPTIONGEN_URL" = var.agent_optiongen_url}, "ports" = {"container_port" = 8080, "name" = "http1"}, "resources" = {"cpu_idle" = true, "startup_cpu_boost" = false}, "container_image" = "us-docker.pkg.dev/cloudrun/container/hello", "container_name" = "service-container"}]
   gpu_zonal_redundancy_disabled = false
   service_account_project_roles = ["roles/run.invoker"]
   vpc_access = {
@@ -111,8 +111,8 @@ module "cloud-run-4" {
 }
 module "memorystore-1" {
   source                  = "github.com/terraform-google-modules/terraform-google-memorystore?ref=v15.2.2"
-  project_id              = var.memorystore-1_project_id
-  region                  = var.memorystore-1_region
+  project_id              = var.project_id
+  region                  = var.location
   name                    = var.memorystore-1_name
   memory_size_gb          = 16
   redis_version           = "REDIS_7_2"
@@ -128,10 +128,10 @@ module "memorystore-1" {
 }
 module "cloud-run-5" {
   source                        = "github.com/GoogleCloudPlatform/terraform-google-cloud-run//modules/v2?ref=v0.23.0"
-  project_id                    = var.cloud-run-5_project_id
-  location                      = var.cloud-run-5_location
+  project_id                    = var.project_id
+  location                      = var.location
   service_name                  = "agent-optiongeneration"
-  containers                    = [{"resources" = {"startup_cpu_boost" = false, "cpu_idle" = true}, "container_image" = "us-docker.pkg.dev/cloudrun/container/hello", "container_name" = "service-container", "env_vars" = {"cloud_run_1_SERVICE_ENDPOINT" = module.cloud-run-1.service_uri}, "ports" = {"container_port" = 8080, "name" = "http1"}}]
+  containers                    = [{"resources" = {"startup_cpu_boost" = false, "cpu_idle" = true}, "container_image" = "us-docker.pkg.dev/cloudrun/container/hello", "container_name" = "service-container", "env_vars" = {"cloud_run_1_SERVICE_ENDPOINT" = module.cloud-run-1.service_uri, "AGENT_CREATEWORLD_URL" = var.agent_createworld_url, "AGENT_CREATECHARACTER_URL" = var.agent_createcharacter_url, "AGENT_NARRATIVE_URL" = var.agent_narrative_url, "AGENT_OPTIONGEN_URL" = var.agent_optiongen_url}, "ports" = {"container_port" = 8080, "name" = "http1"}}]
   gpu_zonal_redundancy_disabled = false
   service_account_project_roles = ["roles/run.invoker"]
   vpc_access = {
@@ -152,10 +152,10 @@ module "cloud-run-5" {
 }
 module "cloud-run-6" {
   source                        = "github.com/GoogleCloudPlatform/terraform-google-cloud-run//modules/v2?ref=v0.23.0"
-  project_id                    = var.cloud-run-6_project_id
-  location                      = var.cloud-run-6_location
+  project_id                    = var.project_id
+  location                      = var.location
   service_name                  = "frontend-web"
-  containers                    = [{"ports" = {"container_port" = 8080, "name" = "http1"}, "resources" = {"cpu_idle" = true, "startup_cpu_boost" = false}, "container_image" = "us-docker.pkg.dev/cloudrun/container/hello", "container_name" = "service-container", "env_vars" = {"cloud_run_1_SERVICE_ENDPOINT" = module.cloud-run-1.service_uri}}]
+  containers                    = [{"ports" = {"container_port" = 8080, "name" = "http1"}, "resources" = {"cpu_idle" = true, "startup_cpu_boost" = false}, "container_image" = "us-docker.pkg.dev/cloudrun/container/hello", "container_name" = "service-container", "env_vars" = {"cloud_run_1_SERVICE_ENDPOINT" = module.cloud-run-1.service_uri, "AGENT_CREATEWORLD_URL" = var.agent_createworld_url, "AGENT_CREATECHARACTER_URL" = var.agent_createcharacter_url, "AGENT_NARRATIVE_URL" = var.agent_narrative_url, "AGENT_OPTIONGEN_URL" = var.agent_optiongen_url}}]
   gpu_zonal_redundancy_disabled = false
   service_account_project_roles = ["roles/run.invoker"]
   vpc_access = {
@@ -176,14 +176,14 @@ module "cloud-run-6" {
 }
 module "firestore-1" {
   source      = "github.com/GoogleCloudPlatform/terraform-google-firestore?ref=v0.2.2"
-  project_id  = var.firestore-1_project_id
+  project_id  = var.project_id
   database_id = var.firestore-1_database_id
-  location    = var.firestore-1_location
+  location    = var.location
 }
 module "apphub" {
   source         = "github.com/GoogleCloudPlatform/terraform-google-apphub?ref=v0.4.0"
-  project_id     = var.apphub_project_id
-  location       = var.apphub_location
+  project_id     = var.project_id
+  location       = var.location
   service_uris   = concat([module.cloud-run-1.apphub_service_uri], module.lb-backend-1.apphub_service_uri, [module.cloud-run-2.apphub_service_uri], [module.cloud-run-3.apphub_service_uri], [module.cloud-run-4.apphub_service_uri], [module.memorystore-1.apphub_service_uri], [module.cloud-run-5.apphub_service_uri], [module.cloud-run-6.apphub_service_uri])
   application_id = var.apphub_application_id
 }

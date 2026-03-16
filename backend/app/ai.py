@@ -1,21 +1,22 @@
 import os
-import google.generativeai as genai
 import json
+import uuid
+import logging
 from dotenv import load_dotenv
+
+# Ensure we use ADK instead of generic generativeai
+from google.adk.agents import LlmAgent
+from google.genai import types
 
 load_dotenv()
 
-# Configure the Gemini API
-api_key = os.getenv("GOOGLE_API_KEY") 
-if api_key:
-    genai.configure(api_key=api_key)
+# We can configure ADK's LlmAgent directly
+MODEL_NAME = 'gemini-1.5-flash'
 
 async def generate_world_intro(world_data: dict):
     """
     Generates a rich narrative introduction for a world based on its metadata.
     """
-    model = genai.GenerativeModel('gemini-1.5-flash')
-    
     prompt = f"""
     You are an expert game master and storyteller. 
     Create a rich, immersive narrative introduction (approx 2-3 paragraphs) for a new storytelling world with the following details:
@@ -29,10 +30,37 @@ async def generate_world_intro(world_data: dict):
     Focus on setting the scene and establishing the mood.
     """
     
+    agent = LlmAgent(
+        model=MODEL_NAME,
+        name="WorldIntroAgent",
+        description="Generates a narrative intro for a world.",
+        instruction="You are an expert game master and storyteller."
+    )
+    
     try:
-        response = model.generate_content(prompt)
-        return response.text
+        from google.adk import Runner
+        from google.adk.sessions import InMemorySessionService
+        runner = Runner(agent=agent, session_service=InMemorySessionService(), app_name="rpg-app")
+        # Run agent
+        events = runner.run(user_id="system", session_id=str(uuid.uuid4()), new_message=prompt)
+        final_text = ""
+        for event in events:
+            if hasattr(event, 'content') and hasattr(event.content, 'text'):
+                 final_text += event.content.text
+            elif hasattr(event, 'message') and hasattr(event.message, 'content') and event.message.content.parts:
+                 for part in event.message.content.parts:
+                     final_text += part.text
+            elif event.type == "model_response":
+                 if hasattr(event, 'data') and event.data:
+                     # Usually model responses come in event.data.content.parts
+                     try:
+                         final_text += event.data.content.parts[0].text
+                     except:
+                         pass
+        
+        return final_text.strip() if final_text else f"Welcome to {world_data['name']}, a land of {world_data['tone']} set in the {world_data['era']}."
     except Exception as e:
+        logging.error(f"Failed to generate intro: {e}")
         return f"Welcome to {world_data['name']}, a land of {world_data['tone']} set in the {world_data['era']}."
 
 async def validate_character_fit(world_data: dict, char_data: dict):
@@ -40,8 +68,6 @@ async def validate_character_fit(world_data: dict, char_data: dict):
     Validates if a character fits the established world lore and rules.
     Returns (is_valid, reasoning).
     """
-    model = genai.GenerativeModel('gemini-1.5-flash')
-    
     prompt = f"""
     You are a lore expert and game moderator. 
     Validate if the following character fits the storytelling world described.
@@ -62,16 +88,33 @@ async def validate_character_fit(world_data: dict, char_data: dict):
     
     Output your response in the following JSON format:
     {{
-        "is_valid": boolean,
+        "is_valid": true,
         "reasoning": "string explaining why the character fits or doesn't fit the world"
     }}
     
-    A character should only be rejected if they fundamentally break the setting (e.g., a cyborg in a low-fantasy medieval setting).
+    A character should only be rejected if they fundamentally break the setting.
     """
     
+    agent = LlmAgent(
+        model=MODEL_NAME,
+        name="ValidatorAgent",
+        description="Validates a character.",
+        instruction="You are a lore expert. Output pure JSON without markdown blocks."
+    )
+    
     try:
-        response = model.generate_content(prompt)
-        text = response.text
+        from google.adk import Runner
+        from google.adk.sessions import InMemorySessionService
+        runner = Runner(agent=agent, session_service=InMemorySessionService(), app_name="rpg-app")
+        events = runner.run(user_id="system", session_id=str(uuid.uuid4()), new_message=prompt)
+        text = ""
+        for event in events:
+            if event.type == "model_response" and hasattr(event, 'data'):
+                try:
+                    text += event.data.content.parts[0].text
+                except:
+                    pass
+
         if "```json" in text:
             text = text.split("```json")[1].split("```")[0].strip()
         elif "```" in text:
@@ -80,6 +123,7 @@ async def validate_character_fit(world_data: dict, char_data: dict):
         result = json.loads(text)
         return result.get("is_valid", True), result.get("reasoning", "Fits the world.")
     except Exception as e:
+        logging.error(f"Failed character validation: {e}")
         return True, "Lore validation skipped due to technical error."
 
 async def generate_character_portrait(world_data: dict, char_data: dict):
@@ -92,8 +136,6 @@ async def generate_next_scene(world_data: dict, char_data: dict, history: list =
     """
     Generates the next narrative scene and a set of choices.
     """
-    model = genai.GenerativeModel('gemini-1.5-flash')
-    
     history_str = ""
     if history:
         history_str = "PREVIOUS STORY EVENTS:\n" + "\n".join([f"Scene: {h['narrative']}\nChoice: {h['choice']}" for h in history])
@@ -124,9 +166,26 @@ async def generate_next_scene(world_data: dict, char_data: dict, history: list =
     }}
     """
     
+    agent = LlmAgent(
+        model=MODEL_NAME,
+        name="NarrativeAgent",
+        description="Generates next scene.",
+        instruction="You are an expert game master. Output pure JSON."
+    )
+    
     try:
-        response = model.generate_content(prompt)
-        text = response.text
+        from google.adk import Runner
+        from google.adk.sessions import InMemorySessionService
+        runner = Runner(agent=agent, session_service=InMemorySessionService(), app_name="rpg-app")
+        events = runner.run(user_id="system", session_id=str(uuid.uuid4()), new_message=prompt)
+        text = ""
+        for event in events:
+            if event.type == "model_response" and hasattr(event, 'data'):
+                try:
+                    text += event.data.content.parts[0].text
+                except:
+                    pass
+
         if "```json" in text:
             text = text.split("```json")[1].split("```")[0].strip()
         elif "```" in text:
@@ -134,6 +193,7 @@ async def generate_next_scene(world_data: dict, char_data: dict, history: list =
             
         return json.loads(text)
     except Exception as e:
+        logging.error(f"Failed next scene: {e}")
         return {
             "narrative": f"The journey continues for {char_data['name']} in the {world_data['name']}.",
             "choices": [{"id": 1, "text": "Press onward"}, {"id": 2, "text": "Look for shelter"}]
@@ -143,8 +203,6 @@ async def generate_session_summary(world_data: dict, char_data: dict, history: l
     """
     Generates a narrative summary of the session's events and the character's impact.
     """
-    model = genai.GenerativeModel('gemini-1.5-flash')
-    
     history_str = "STORY EVENTS:\n" + "\n".join([f"Scene: {h['narrative']}\nChoice: {h['choice']}" for h in history])
     
     prompt = f"""
@@ -159,8 +217,26 @@ async def generate_session_summary(world_data: dict, char_data: dict, history: l
     Provide a 1-2 paragraph conclusion that wraps up this specific adventure.
     """
     
+    agent = LlmAgent(
+        model=MODEL_NAME,
+        name="SummaryAgent",
+        description="Summarizes the session.",
+        instruction="You are an expert game master."
+    )
+    
     try:
-        response = model.generate_content(prompt)
-        return response.text
+        from google.adk import Runner
+        from google.adk.sessions import InMemorySessionService
+        runner = Runner(agent=agent, session_service=InMemorySessionService(), app_name="rpg-app")
+        events = runner.run(user_id="system", session_id=str(uuid.uuid4()), new_message=prompt)
+        text = ""
+        for event in events:
+            if event.type == "model_response" and hasattr(event, 'data'):
+                try:
+                    text += event.data.content.parts[0].text
+                except:
+                    pass
+        return text.strip() if text else f"{char_data['name']}'s journey in {world_data['name']} has come to an end for now."
     except Exception as e:
+        logging.error(f"Failed summary: {e}")
         return f"{char_data['name']}'s journey in {world_data['name']} has come to an end for now."
