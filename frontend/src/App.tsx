@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import CreateWorldForm from './components/CreateWorldForm';
+import CreateCharacterForm from './components/CreateCharacterForm';
 
 const Home = () => (
   <div className="p-8 text-center max-w-4xl mx-auto">
@@ -20,10 +21,9 @@ const CreateWorld = () => (
 );
 
 const CreateCharacter = () => (
-  <div className="p-8">
-    <h2 className="text-2xl font-bold mb-4">Create Your Character</h2>
-    <p>Placeholder for Character Creation Form...</p>
-    <a href="/" className="text-blue-500 underline">Back home</a>
+  <div className="p-8 bg-gray-50 min-h-screen">
+    <Link to="/" className="text-blue-500 underline mb-4 inline-block">&larr; Back home</Link>
+    <CreateCharacterForm />
   </div>
 );
 
@@ -32,7 +32,7 @@ function App() {
     <Router>
       <div className="min-h-screen bg-white text-gray-900 font-sans">
         <nav className="p-4 border-b">
-          <a href="/" className="font-bold">RPG Conductor</a>
+          <Link to="/" className="font-bold">RPG Conductor</Link>
         </nav>
         <Routes>
           <Route path="/" element={<Home />} />
