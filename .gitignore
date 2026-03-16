@@ -18,7 +18,7 @@ crash.*.log
 # Terraform plan output
 *.tfplan
 *.tfplan.json
-
+.claude
 # =========================
 # Environment & Secrets
 # =========================

@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 
 const API_BASE_URL = 'http://localhost:8000';
 
 const CreateCharacterForm = () => {
   const { worldId } = useParams();
+  const navigate = useNavigate();
   const [world, setWorld] = useState<any>(null);
   const [formData, setFormData] = useState({
     world_id: worldId,
