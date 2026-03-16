@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 import uuid
@@ -8,6 +9,7 @@ import os
 import json
 from a2a.client import A2ACardResolver, A2AClient
 from a2a.types import SendMessageRequest, MessageSendParams
+from media_service import GENERATED_MEDIA_DIR, ensure_character_portraits, ensure_media_dirs, ensure_scene_image, ensure_world_banner
 
 app = FastAPI()
 
@@ -15,6 +17,10 @@ ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LOCAL_DB_PATH = os.path.join(ROOT_DIR, "mcp-server", "test_db.json")
 FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN", "http://localhost:5173")
 FRONTEND_ORIGIN_ALT = os.getenv("FRONTEND_ORIGIN_ALT", "http://127.0.0.1:5173")
+PUBLIC_API_BASE_URL = os.getenv("PUBLIC_API_BASE_URL", "http://localhost:8000")
+
+ensure_media_dirs()
+app.mount("/generated", StaticFiles(directory=str(GENERATED_MEDIA_DIR)), name="generated")
 
 # Configure CORS
 app.add_middleware(
@@ -55,8 +61,24 @@ def load_local_db() -> dict:
     with open(LOCAL_DB_PATH, "r") as db_file:
         return json.load(db_file)
 
+def save_local_db(db_data: dict) -> None:
+    with open(LOCAL_DB_PATH, "w") as db_file:
+        json.dump(db_data, db_file)
+
 def list_collection_documents(collection_name: str) -> List[dict]:
     return list(load_local_db().get(collection_name, {}).values())
+
+def update_local_document(collection_name: str, document_id: str, updates: dict) -> dict | None:
+    db_data = load_local_db()
+    collection = db_data.setdefault(collection_name, {})
+    document = collection.get(document_id)
+    if not document:
+        return None
+
+    document.update(updates)
+    collection[document_id] = document
+    save_local_db(db_data)
+    return document
 
 def find_world_by_share_code(share_code: str) -> Optional[dict]:
     normalized_code = share_code.strip().upper()
@@ -71,6 +93,65 @@ def get_character_name(character_id: str) -> str:
     db_data = load_local_db()
     character = db_data.get("characters", {}).get(character_id)
     return character.get("name", "Unknown Character") if character else "Unknown Character"
+
+def get_world_from_local_db(world_id: str) -> Optional[dict]:
+    return load_local_db().get("worlds", {}).get(world_id)
+
+def enrich_world_media(world: dict) -> dict:
+    banner_url = world.get("banner_url") or ensure_world_banner(world, PUBLIC_API_BASE_URL)
+    if banner_url and world.get("id"):
+        updated = update_local_document("worlds", world["id"], {"banner_url": banner_url})
+        return updated or {**world, "banner_url": banner_url}
+    return world
+
+def enrich_character_media(character: dict) -> dict:
+    world = get_world_from_local_db(character.get("world_id", ""))
+    if not world:
+        return character
+
+    portrait_urls = character.get("portrait_urls") or ensure_character_portraits(
+        character,
+        world,
+        PUBLIC_API_BASE_URL,
+    )
+    updates = {}
+    if portrait_urls:
+        updates["portrait_urls"] = portrait_urls
+        updates["portrait_url"] = portrait_urls[0]
+
+    if updates and character.get("id"):
+        updated = update_local_document("characters", character["id"], updates)
+        return updated or {**character, **updates}
+    return character
+
+def enrich_session_media(session: dict) -> dict:
+    world = get_world_from_local_db(session.get("world_id", ""))
+    if not world:
+        return session
+
+    current_scene = session.get("current_scene", {}) or {}
+    scene_number = current_scene.get("scene_number")
+    narrative = current_scene.get("narrative", "")
+    if not scene_number or not narrative:
+        return session
+
+    image_url = current_scene.get("image_url") or ensure_scene_image(
+        session.get("id", ""),
+        scene_number,
+        narrative,
+        world,
+        PUBLIC_API_BASE_URL,
+    )
+    if not image_url:
+        return session
+
+    return {
+        **session,
+        "current_scene": {
+            **current_scene,
+            "image_url": image_url,
+        },
+    }
 
 def build_chronicle_entry(session_data: dict, world_data: dict) -> dict:
     history_count = len(session_data.get("history", []))
@@ -171,7 +252,7 @@ async def create_world(world_data: WorldCreate):
     res = await send_a2a_message(AGENT_CREATEWORLD_URL, prompt)
     if "error" in res and "raw_text" not in res:
         raise HTTPException(status_code=500, detail=res["error"])
-    return res
+    return enrich_world_media(res)
 
 @app.get("/api/worlds/{world_id}")
 async def get_world(world_id: str):
@@ -179,13 +260,14 @@ async def get_world(world_id: str):
     res = await send_a2a_message(AGENT_CREATEWORLD_URL, prompt)
     if "error" in res:
         raise HTTPException(status_code=404, detail="World not found")
-    return res
+    return enrich_world_media(res)
 
 @app.post("/api/worlds/{share_code}/join")
 async def join_world(share_code: str):
     world = find_world_by_share_code(share_code)
     if not world:
         raise HTTPException(status_code=404, detail="World not found for that share code")
+    world = enrich_world_media(world)
 
     recent_sessions = [
         session
@@ -208,6 +290,7 @@ async def get_world_chronicle(world_id: str):
     world = db_data.get("worlds", {}).get(world_id)
     if not world:
         raise HTTPException(status_code=404, detail="World not found")
+    world = enrich_world_media(world)
 
     sessions = [
         session
@@ -236,7 +319,7 @@ async def create_character(char_data: CharacterCreate):
     res = await send_a2a_message(AGENT_CREATECHARACTER_URL, prompt)
     if "error" in res and "raw_text" not in res:
         raise HTTPException(status_code=500, detail=res["error"])
-    return res
+    return enrich_character_media(res)
 
 @app.get("/api/characters/{char_id}")
 async def get_character(char_id: str):
@@ -244,7 +327,7 @@ async def get_character(char_id: str):
     res = await send_a2a_message(AGENT_CREATECHARACTER_URL, prompt)
     if "error" in res:
         raise HTTPException(status_code=404, detail="Character not found")
-    return res
+    return enrich_character_media(res)
 
 @app.post("/api/sessions", status_code=201)
 async def create_session(session_data: SessionCreate):
@@ -274,9 +357,9 @@ async def create_session(session_data: SessionCreate):
             history_entry: {json.dumps({"scene_number": 1, "narrative": narrative, "choice": "started adventure"})}
             """
             final_res = await send_a2a_message(AGENT_NARRATIVE_URL, update_prompt)
-            return final_res
+            return enrich_session_media(final_res)
             
-    return res
+    return enrich_session_media(res)
 
 @app.get("/api/sessions/{session_id}")
 async def get_session(session_id: str):
@@ -284,7 +367,7 @@ async def get_session(session_id: str):
     res = await send_a2a_message(AGENT_NARRATIVE_URL, prompt)
     if "error" in res:
         raise HTTPException(status_code=404, detail="Session not found")
-    return res
+    return enrich_session_media(res)
 
 @app.post("/api/sessions/{session_id}/choices")
 async def submit_choice(session_id: str, submission: ChoiceSubmission):
@@ -311,12 +394,12 @@ async def submit_choice(session_id: str, submission: ChoiceSubmission):
             history_entry: {json.dumps({"scene_number": scene_num, "narrative": narrative, "choice": "made a choice"})}
             """
             final_res = await send_a2a_message(AGENT_NARRATIVE_URL, update_prompt)
-            return final_res
+            return enrich_session_media(final_res)
             
-    return res
+    return enrich_session_media(res)
 
 @app.post("/api/sessions/{session_id}/conclude")
 async def conclude_session(session_id: str):
     prompt = f"Use conclude_session tool for session_id {session_id}. Write a 1-2 paragraph summary."
     res = await send_a2a_message(AGENT_NARRATIVE_URL, prompt)
-    return res
+    return enrich_session_media(res)

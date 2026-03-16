@@ -207,6 +207,7 @@ start_service \
   "frontend-web gateway on :$GATEWAY_PORT" \
   "$ROOT/frontend-web" \
   env \
+    PUBLIC_API_BASE_URL="http://localhost:$GATEWAY_PORT" \
     FRONTEND_ORIGIN="http://localhost:$FRONTEND_PORT" \
     FRONTEND_ORIGIN_ALT="http://127.0.0.1:$FRONTEND_PORT" \
     AGENT_CREATEWORLD_URL="http://localhost:$AGENT_CREATEWORLD_PORT" \

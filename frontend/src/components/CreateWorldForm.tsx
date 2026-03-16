@@ -36,6 +36,7 @@ export default function CreateWorldForm() {
     name: string;
     intro: string;
     share_code: string;
+    banner_url?: string;
   } | null>(null);
 
   useEffect(() => {
@@ -71,6 +72,11 @@ export default function CreateWorldForm() {
     return (
       <main className="world-flow-shell world-flow-shell-olive">
         <section className="world-created-card">
+          {createdWorld.banner_url && (
+            <div className="world-created-banner">
+              <img src={createdWorld.banner_url} alt={createdWorld.name} />
+            </div>
+          )}
           <p className="section-eyebrow">World Created</p>
           <h1>{createdWorld.name}</h1>
           <p>{createdWorld.intro}</p>

@@ -159,6 +159,12 @@ export default function CreateCharacterForm() {
     );
   }
 
+  const portraitOptions = createdCharacter?.portrait_urls?.length
+    ? createdCharacter.portrait_urls
+    : createdCharacter
+      ? PORTRAIT_FILTERS.map(() => createdCharacter.portrait_url)
+      : [];
+
   return (
     <main className="character-flow-shell">
       <div className="character-frame">
@@ -241,7 +247,11 @@ export default function CreateCharacterForm() {
           <section className="character-details-layout">
             <aside className="character-preview-card">
               <div className="portrait-placeholder">
-                <span>{name.slice(0, 1) || 'U'}</span>
+                {createdCharacter?.portrait_url ? (
+                  <img src={createdCharacter.portrait_url} alt={createdCharacter.name} />
+                ) : (
+                  <span>{name.slice(0, 1) || 'U'}</span>
+                )}
               </div>
               <h2>{name || 'Unnamed Character'}</h2>
               <p>{getArchetypeById(archetypeId).label}</p>
@@ -372,17 +382,17 @@ export default function CreateCharacterForm() {
             </header>
 
             <div className="portrait-grid">
-              {PORTRAIT_FILTERS.map((filter, index) => (
+              {portraitOptions.map((portraitUrl, index) => (
                 <button
                   type="button"
-                  key={filter}
+                  key={`${portraitUrl}-${index}`}
                   className={selectedPortraitIndex === index ? 'portrait-card selected' : 'portrait-card'}
                   onClick={() => setSelectedPortraitIndex(index)}
                 >
                   <img
-                    src={createdCharacter.portrait_url}
+                    src={portraitUrl}
                     alt={createdCharacter.name}
-                    style={{ filter }}
+                    style={createdCharacter?.portrait_urls?.length ? undefined : { filter: PORTRAIT_FILTERS[index] }}
                   />
                   <span>Option {index + 1}</span>
                 </button>

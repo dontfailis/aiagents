@@ -7,6 +7,7 @@ export interface World {
   description?: string | null;
   intro: string;
   share_code: string;
+  banner_url?: string;
   created_at: string;
 }
 
@@ -19,6 +20,7 @@ export interface Character {
   backstory: string;
   visual_description: string;
   portrait_url: string;
+  portrait_urls?: string[];
   fit_reasoning: string;
   created_at: string;
 }
@@ -32,6 +34,7 @@ export interface StoryScene {
   scene_number: number;
   narrative: string;
   choices: StoryChoice[];
+  image_url?: string;
 }
 
 export interface SessionHistoryEntry {

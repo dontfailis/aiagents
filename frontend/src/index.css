@@ -406,6 +406,29 @@ img {
   padding: 1.5rem;
 }
 
+.join-summary-banner,
+.world-created-banner,
+.chronicle-banner,
+.session-scene-image {
+  overflow: hidden;
+  border-radius: 1rem;
+}
+
+.join-summary-banner,
+.world-created-banner {
+  margin-bottom: 1.2rem;
+}
+
+.join-summary-banner img,
+.world-created-banner img,
+.chronicle-banner img,
+.session-scene-image img,
+.portrait-placeholder img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 .join-summary-heading {
   display: flex;
   justify-content: space-between;
@@ -986,6 +1009,10 @@ img {
   font-weight: 700;
 }
 
+.portrait-placeholder img {
+  min-height: 16rem;
+}
+
 .character-preview-card h2 {
   margin: 1rem 0 0.25rem;
   text-align: center;
@@ -1238,6 +1265,11 @@ img {
   line-height: 1.58;
 }
 
+.session-scene-image {
+  margin-bottom: 1.5rem;
+  aspect-ratio: 16 / 9;
+}
+
 .session-story-text p {
   margin: 0 0 1.3rem;
 }
@@ -1324,9 +1356,15 @@ img {
 
 .chronicle-header-row,
 .chronicle-toolbar,
-.chronicle-timeline {
+.chronicle-timeline,
+.chronicle-banner {
   width: min(100%, 980px);
   margin: 0 auto;
+}
+
+.chronicle-banner {
+  margin-bottom: 1.5rem;
+  aspect-ratio: 16 / 5;
 }
 
 .chronicle-header-row {

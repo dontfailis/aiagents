@@ -18,7 +18,10 @@ Attributes:
 import argparse
 from pathlib import Path
 
-from _gemini import get_api_key, run_generation
+try:
+    from ._gemini import get_api_key, run_generation
+except ImportError:
+    from _gemini import get_api_key, run_generation
 
 PROMPT_TEMPLATE = (
     "Character portrait for a {world} setting with a {tone} tone. "

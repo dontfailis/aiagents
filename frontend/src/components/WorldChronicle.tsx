@@ -18,6 +18,7 @@ export default function WorldChronicle() {
   const { worldId } = useParams();
   const [entries, setEntries] = useState<ChronicleEntry[]>([]);
   const [worldName, setWorldName] = useState('');
+  const [bannerUrl, setBannerUrl] = useState('');
   const [filter, setFilter] = useState<ChronicleFilter>('all');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -34,6 +35,7 @@ export default function WorldChronicle() {
         const response = await getChronicle(worldId);
         setEntries(response.entries);
         setWorldName(response.world.name);
+        setBannerUrl(response.world.banner_url ?? '');
       } catch (loadError) {
         setError(loadError instanceof Error ? loadError.message : 'Unable to load chronicle.');
       } finally {
@@ -62,6 +64,12 @@ export default function WorldChronicle() {
           Return to World
         </Link>
       </div>
+
+      {bannerUrl && (
+        <div className="chronicle-banner">
+          <img src={bannerUrl} alt={worldName || 'World banner'} />
+        </div>
+      )}
 
       <div className="chronicle-toolbar">
         <div className="chronicle-filters">

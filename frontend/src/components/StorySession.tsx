@@ -162,6 +162,11 @@ export default function StorySession() {
         </div>
 
         <article className="session-story-text">
+          {session.current_scene.image_url && (
+            <div className="session-scene-image">
+              <img src={session.current_scene.image_url} alt={`Scene ${session.current_scene.scene_number}`} />
+            </div>
+          )}
           {session.current_scene.narrative.split('\n').map((paragraph) => (
             <p key={paragraph}>{paragraph}</p>
           ))}

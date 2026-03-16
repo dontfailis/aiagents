@@ -26,7 +26,10 @@ Attributes:
 import argparse
 from pathlib import Path
 
-from _gemini import get_api_key, run_generation
+try:
+    from ._gemini import get_api_key, run_generation
+except ImportError:
+    from _gemini import get_api_key, run_generation
 
 PROMPT_TEMPLATE = (
     "Atmospheric scene illustration for a {world} story with a {tone} tone. "

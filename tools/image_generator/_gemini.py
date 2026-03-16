@@ -30,37 +30,51 @@ except ImportError:
 IMAGEN_MODEL = "imagen-4.0-generate-001"
 
 
-def get_api_key(cli_override: Optional[str] = None) -> str:
-    """Retrieves the Gemini API key from the CLI or environment variables.
+def get_api_key(cli_override: Optional[str] = None) -> Optional[str]:
+    """Retrieves API-key auth if present, otherwise allows Vertex auth via env.
 
     Args:
         cli_override: An optional API key provided via command-line arguments.
 
     Returns:
-        The validated API key string.
+        The validated API key string, or ``None`` when Vertex auth should be used.
 
     SystemExit:
-        If no API key is found either in `cli_override` or `GEMINI_API_KEY`.
+        If neither API-key auth nor Vertex env configuration is available.
     """
-    key = cli_override or os.environ.get("GEMINI_API_KEY")
+    key = cli_override or os.environ.get("GOOGLE_API_KEY") or os.environ.get("GEMINI_API_KEY")
+    if key:
+        return key
+
+    if os.environ.get("GOOGLE_CLOUD_PROJECT"):
+        return None
+
     if not key:
         sys.exit(
-            "Error: GEMINI_API_KEY not set.\n"
-            "  Add it to ../.env, set it in the environment, or pass --api-key <key>"
+            "Error: no model auth configured.\n"
+            "  Set GOOGLE_API_KEY/GEMINI_API_KEY, or configure GOOGLE_CLOUD_PROJECT for Vertex auth."
         )
-    return key
+    return None
 
 
-def make_client(api_key: str) -> genai.Client:
+def make_client(api_key: Optional[str] = None) -> genai.Client:
     """Initializes and returns a Gemini client.
 
     Args:
-        api_key: The authenticated API key.
+        api_key: The authenticated API key, or ``None`` for Vertex auth.
 
     Returns:
         A configured `genai.Client` instance.
     """
-    return genai.Client(api_key=api_key)
+    if api_key:
+        return genai.Client(api_key=api_key)
+
+    project = os.environ.get("GOOGLE_CLOUD_PROJECT")
+    location = os.environ.get("GOOGLE_CLOUD_LOCATION", "global")
+    if project:
+        return genai.Client(vertexai=True, project=project, location=location)
+
+    raise ValueError("No API key or Vertex project configured for image generation.")
 
 
 def generate_images(
@@ -128,7 +142,7 @@ def run_generation(
     aspect_ratio: str,
     output_dir: Path,
     prefix: str,
-    api_key: str,
+    api_key: Optional[str],
     label: str,
 ) -> list[Path]:
     """Coordinates the end-to-end image generation and saving process.

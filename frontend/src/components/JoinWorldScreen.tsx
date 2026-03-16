@@ -66,6 +66,11 @@ export default function JoinWorldScreen() {
 
         {result && (
           <article className="join-summary-card">
+            {result.world.banner_url && (
+              <div className="join-summary-banner">
+                <img src={result.world.banner_url} alt={result.world.name} />
+              </div>
+            )}
             <div className="join-summary-heading">
               <div>
                 <div className="join-summary-meta">
