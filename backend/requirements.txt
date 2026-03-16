@@ -5,4 +5,4 @@ google-adk
 python-dotenv
 
 httpx
-fastmcp
+mcp

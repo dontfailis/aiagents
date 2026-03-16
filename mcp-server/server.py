@@ -188,6 +188,52 @@ def conclude_session(session_id: str, summary: str) -> dict:
     result["updated_at"] = "2026-03-16T21:45:00Z"
     return result
 
+@mcp.tool()
+def update_world_state(world_id: str, new_state: dict) -> dict:
+    """Use this to update the structured state of a world."""
+    doc_ref = db.collection("worlds").document(world_id)
+    doc = doc_ref.get()
+    if not doc.exists:
+        return {"error": "World not found"}
+    
+    update_data = {
+        "structured_state": new_state,
+        "updated_at": firestore.SERVER_TIMESTAMP
+    }
+    doc_ref.update(update_data)
+    
+    world_data = doc.to_dict()
+    result = {**world_data, **update_data}
+    result["updated_at"] = "2026-03-16T21:50:00Z"
+    return result
+
+@mcp.tool()
+def add_world_event(
+    world_id: str,
+    source_character_id: str,
+    location: str,
+    summary: str,
+    impact_scope: str,
+    new_hooks: List[str]
+) -> dict:
+    """Use this to record a new event in the world's history log."""
+    event_id = str(uuid.uuid4())
+    event_dict = {
+        "id": event_id,
+        "world_id": world_id,
+        "source_character_id": source_character_id,
+        "location": location,
+        "summary": summary,
+        "impact_scope": impact_scope,
+        "new_hooks": new_hooks,
+        "created_at": firestore.SERVER_TIMESTAMP
+    }
+    db.collection("world_events").document(event_id).set(event_dict)
+    
+    result = dict(event_dict)
+    result["created_at"] = "2026-03-16T21:55:00Z"
+    return result
+
 if __name__ == "__main__":
     logger.info(f"🚀 MCP server started on port {os.getenv('PORT', '8080')}")
     asyncio.run(

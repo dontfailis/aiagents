@@ -41,8 +41,10 @@ async def generate_world_intro(world_data: dict):
         from google.adk import Runner
         from google.adk.sessions import InMemorySessionService
         runner = Runner(agent=agent, session_service=InMemorySessionService(), app_name="rpg-app")
+        from google.adk.events import UserMessage, UserMessageContent
+
         # Run agent
-        events = runner.run(user_id="system", session_id=str(uuid.uuid4()), new_message=prompt)
+        events = runner.run(user_id="system", session_id=str(uuid.uuid4()), new_message=UserMessage(content=UserMessageContent(parts=[prompt])))
         final_text = ""
         for event in events:
             if hasattr(event, 'content') and hasattr(event.content, 'text'):
@@ -106,7 +108,8 @@ async def validate_character_fit(world_data: dict, char_data: dict):
         from google.adk import Runner
         from google.adk.sessions import InMemorySessionService
         runner = Runner(agent=agent, session_service=InMemorySessionService(), app_name="rpg-app")
-        events = runner.run(user_id="system", session_id=str(uuid.uuid4()), new_message=prompt)
+        from google.adk.events import UserMessage, UserMessageContent
+        events = runner.run(user_id="system", session_id=str(uuid.uuid4()), new_message=UserMessage(content=UserMessageContent(parts=[prompt])))
         text = ""
         for event in events:
             if event.type == "model_response" and hasattr(event, 'data'):
@@ -139,6 +142,18 @@ async def generate_next_scene(world_data: dict, char_data: dict, history: list =
     history_str = ""
     if history:
         history_str = "PREVIOUS STORY EVENTS:\n" + "\n".join([f"Scene: {h['narrative']}\nChoice: {h['choice']}" for h in history])
+        
+    world_state_str = ""
+    if world_data.get("structured_state"):
+        state = world_data["structured_state"]
+        world_state_str = f"""
+        CURRENT WORLD STATE CONTEXT:
+        - Major Active Region: {state.get('location', 'Unknown')}
+        - Global Tension Delta: {state.get('tension_delta', 0)}
+        - Factions: {state.get('faction_changes', [])}
+        - Current Rumors: {state.get('rumors_added', [])}
+        - Open Plot Hooks: {state.get('story_hooks_unlocked', [])}
+        """
     
     last_choice_str = f"The player chose: {last_choice}" if last_choice else "This is the start of the adventure."
     
@@ -147,6 +162,8 @@ async def generate_next_scene(world_data: dict, char_data: dict, history: list =
     
     WORLD: {world_data['name']} ({world_data['era']}, {world_data['tone']})
     CHARACTER: {char_data['name']}, a {char_data['age']} year old {char_data['archetype']}. Backstory: {char_data['backstory']}
+    
+    {world_state_str}
     
     {history_str}
     
@@ -177,7 +194,8 @@ async def generate_next_scene(world_data: dict, char_data: dict, history: list =
         from google.adk import Runner
         from google.adk.sessions import InMemorySessionService
         runner = Runner(agent=agent, session_service=InMemorySessionService(), app_name="rpg-app")
-        events = runner.run(user_id="system", session_id=str(uuid.uuid4()), new_message=prompt)
+        from google.adk.events import UserMessage, UserMessageContent
+        events = runner.run(user_id="system", session_id=str(uuid.uuid4()), new_message=UserMessage(content=UserMessageContent(parts=[prompt])))
         text = ""
         for event in events:
             if event.type == "model_response" and hasattr(event, 'data'):
@@ -228,7 +246,8 @@ async def generate_session_summary(world_data: dict, char_data: dict, history: l
         from google.adk import Runner
         from google.adk.sessions import InMemorySessionService
         runner = Runner(agent=agent, session_service=InMemorySessionService(), app_name="rpg-app")
-        events = runner.run(user_id="system", session_id=str(uuid.uuid4()), new_message=prompt)
+        from google.adk.events import UserMessage, UserMessageContent
+        events = runner.run(user_id="system", session_id=str(uuid.uuid4()), new_message=UserMessage(content=UserMessageContent(parts=[prompt])))
         text = ""
         for event in events:
             if event.type == "model_response" and hasattr(event, 'data'):
@@ -240,3 +259,123 @@ async def generate_session_summary(world_data: dict, char_data: dict, history: l
     except Exception as e:
         logging.error(f"Failed summary: {e}")
         return f"{char_data['name']}'s journey in {world_data['name']} has come to an end for now."
+
+async def generate_world_state_update(world_data: dict, char_data: dict, history: list):
+    """
+    Analyzes the concluded session to extract structured world changes.
+    Returns a JSON string of state deltas.
+    """
+    history_str = "STORY EVENTS:\n" + "\n".join([f"Scene: {h['narrative']}\nChoice: {h['choice']}" for h in history])
+    
+    prompt = f"""
+    You are an expert game master. The story session has concluded.
+    Analyze the session events and extract the structured consequences to the world state.
+    
+    WORLD: {world_data['name']}
+    CHARACTER: {char_data['name']}
+    
+    {history_str}
+    
+    Output your response in the following JSON format:
+    {{
+      "location": "The region where most events took place",
+      "tension_delta": 0,
+      "faction_changes": [
+        {{ "faction": "Name of faction", "status": "new status" }}
+      ],
+      "rumors_added": [
+        "A short rumor based on the events"
+      ],
+      "story_hooks_unlocked": [
+        "A future plot hook based on the resolution"
+      ],
+      "global_impact": false
+    }}
+    
+    Ensure tension_delta is an integer (e.g. +1, -2).
+    """
+    
+    agent = LlmAgent(
+        model=MODEL_NAME,
+        name="StateUpdateAgent",
+        description="Extracts structured world state changes.",
+        instruction="You are an expert game master. Output pure JSON."
+    )
+    
+    try:
+        from google.adk import Runner
+        from google.adk.sessions import InMemorySessionService
+        runner = Runner(agent=agent, session_service=InMemorySessionService(), app_name="rpg-app")
+        from google.adk.events import UserMessage, UserMessageContent
+        events = runner.run(user_id="system", session_id=str(uuid.uuid4()), new_message=UserMessage(content=UserMessageContent(parts=[prompt])))
+        text = ""
+        for event in events:
+            if event.type == "model_response" and hasattr(event, 'data'):
+                try:
+                    text += event.data.content.parts[0].text
+                except:
+                    pass
+
+        if "```json" in text:
+            text = text.split("```json")[1].split("```")[0].strip()
+        elif "```" in text:
+            text = text.split("```")[1].split("```")[0].strip()
+            
+        return json.loads(text)
+    except Exception as e:
+        logging.error(f"Failed state update generation: {e}")
+        return {
+            "location": "Unknown",
+            "tension_delta": 0,
+            "faction_changes": [],
+            "rumors_added": [f"{char_data['name']} passed through the area."],
+            "story_hooks_unlocked": [],
+            "global_impact": False
+        }
+
+async def generate_while_away_summary(world_data: dict, char_data: dict, recent_events: list):
+    """
+    Generates a recap for returning players based on events that happened since their last session.
+    """
+    if not recent_events:
+        return f"Welcome back to {world_data['name']}. The world has been quiet since you last departed."
+        
+    events_str = "RECENT EVENTS IN THE WORLD:\n" + "\n".join([f"- Location: {e.get('location', 'Unknown')} | Event: {e.get('summary', '')}" for e in recent_events])
+    
+    prompt = f"""
+    You are an expert game master. A player is returning to the storytelling RPG after some time away.
+    Other players have been active in the shared world, causing changes.
+    
+    WORLD: {world_data['name']}
+    CHARACTER: {char_data['name']}
+    
+    {events_str}
+    
+    Create a brief, atmospheric "While You Were Away" summary (1-2 paragraphs).
+    Focus on how the world has shifted, new tensions or opportunities, and what their character might hear as rumors upon returning.
+    """
+    
+    agent = LlmAgent(
+        model=MODEL_NAME,
+        name="WhileAwayAgent",
+        description="Generates a recap of recent world events.",
+        instruction="You are an expert game master bringing an asynchronous player back up to speed."
+    )
+    
+    try:
+        from google.adk import Runner
+        from google.adk.sessions import InMemorySessionService
+        runner = Runner(agent=agent, session_service=InMemorySessionService(), app_name="rpg-app")
+        from google.adk.events import UserMessage, UserMessageContent
+        events = runner.run(user_id="system", session_id=str(uuid.uuid4()), new_message=UserMessage(content=UserMessageContent(parts=[prompt])))
+        text = ""
+        for event in events:
+            if event.type == "model_response" and hasattr(event, 'data'):
+                try:
+                    text += event.data.content.parts[0].text
+                except:
+                    pass
+        return text.strip() if text else f"The world of {world_data['name']} continues to turn, though rumors are sparse."
+    except Exception as e:
+        logging.error(f"Failed while-away summary: {e}")
+        return f"The world of {world_data['name']} continues to turn, though rumors are sparse."

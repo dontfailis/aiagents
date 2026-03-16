@@ -29,6 +29,41 @@ class MockCollection:
 
     def document(self, doc_id):
         return MockDocumentReference(doc_id, self)
+        
+    def where(self, field, op, value):
+        return MockQuery(self, field, op, value)
+        
+    def stream(self):
+        db_data = self._load_db()
+        docs = db_data.get(self.name, {})
+        return [MockDocument(doc_data) for doc_data in docs.values()]
+
+class MockQuery:
+    def __init__(self, collection, field, op, value):
+        self.collection = collection
+        self.field = field
+        self.op = op
+        self.value = value
+        self._limit = None
+        
+    def limit(self, count):
+        self._limit = count
+        return self
+        
+    def stream(self):
+        db_data = self.collection._load_db()
+        docs = db_data.get(self.collection.name, {})
+        
+        results = []
+        for doc_data in docs.values():
+            if self.op == "==":
+                if doc_data.get(self.field) == self.value:
+                    results.append(MockDocument(doc_data))
+            # Extend ops as needed
+        
+        if self._limit is not None:
+            return results[:self._limit]
+        return results
 
 class MockDocumentReference:
     def __init__(self, doc_id, collection):

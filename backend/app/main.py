@@ -5,8 +5,8 @@ from typing import Optional
 import uuid
 import secrets
 import string
-from database import db, firestore
-from ai import generate_world_intro, validate_character_fit, generate_character_portrait, generate_next_scene, generate_session_summary
+from .database import db, firestore
+from .ai import generate_world_intro, validate_character_fit, generate_character_portrait, generate_next_scene, generate_session_summary, generate_world_state_update, generate_while_away_summary
 
 app = FastAPI()
 
@@ -184,6 +184,34 @@ async def get_world(world_id: str):
         data["created_at"] = data["created_at"].isoformat() if hasattr(data["created_at"], "isoformat") else str(data["created_at"])
     return data
 
+@app.get("/api/worlds/{world_id}/events")
+async def get_world_events(world_id: str):
+    events_ref = db.collection("world_events").where("world_id", "==", world_id).stream()
+    events = [doc.to_dict() for doc in events_ref]
+    return {"events": events}
+
+@app.get("/api/worlds/{world_id}/updates")
+async def get_world_updates(world_id: str, character_id: str):
+    world_doc = db.collection("worlds").document(world_id).get()
+    if not world_doc.exists:
+        raise HTTPException(status_code=404, detail="World not found")
+        
+    char_doc = db.collection("characters").document(character_id).get()
+    if not char_doc.exists:
+        raise HTTPException(status_code=404, detail="Character not found")
+        
+    # In a real app, this would filter by timestamp since the character's last session
+    events_ref = db.collection("world_events").where("world_id", "==", world_id).limit(10).stream()
+    recent_events = [doc.to_dict() for doc in events_ref]
+    
+    summary = await generate_while_away_summary(
+        world_doc.to_dict(),
+        char_doc.to_dict(),
+        recent_events
+    )
+    
+    return {"summary": summary, "events_count": len(recent_events)}
+
 # Characters API
 @app.post("/api/characters", status_code=201)
 async def create_character(char_data: CharacterCreate):
@@ -320,20 +348,55 @@ async def conclude_session(session_id: str):
     if session_data["status"] != "in_progress":
         raise HTTPException(status_code=400, detail="Session is already finished")
     
-    world_doc = db.collection("worlds").document(session_data["world_id"]).get()
+    world_id = session_data["world_id"]
+    world_doc_ref = db.collection("worlds").document(world_id)
+    world_doc = world_doc_ref.get()
     char_doc = db.collection("characters").document(session_data["character_id"]).get()
     
+    world_data = world_doc.to_dict()
+    char_data = char_doc.to_dict()
+    
     summary = await generate_session_summary(
-        world_doc.to_dict(), 
-        char_doc.to_dict(), 
+        world_data, 
+        char_data, 
         session_data["history"]
     )
+    
+    state_update = await generate_world_state_update(
+        world_data,
+        char_data,
+        session_data["history"]
+    )
+    
+    # 1. Add world event
+    event_id = str(uuid.uuid4())
+    event_dict = {
+        "id": event_id,
+        "world_id": world_id,
+        "source_character_id": char_data["id"],
+        "location": state_update.get("location", "Unknown"),
+        "summary": summary,
+        "impact_scope": "global" if state_update.get("global_impact") else "regional",
+        "new_hooks": state_update.get("story_hooks_unlocked", []),
+        "created_at": firestore.SERVER_TIMESTAMP
+    }
+    db.collection("world_events").document(event_id).set(event_dict)
+    
+    # 2. Update world state
+    new_structured_state = world_data.get("structured_state", {})
+    # Simple merge for MVP
+    new_structured_state.update(state_update)
+    world_doc_ref.update({
+        "structured_state": new_structured_state,
+        "updated_at": firestore.SERVER_TIMESTAMP
+    })
     
     update_data = {
         "status": "completed",
         "summary": summary,
         "updated_at": firestore.SERVER_TIMESTAMP
     }
-    
     doc_ref.update(update_data)
-    return {**session_data, **update_data, "updated_at": "2026-03-16T21:45:00Z"}
+    
+    return {**session_data, **update_data, "updated_at": "2026-03-16T21:45:00Z", "world_update": state_update}
+
