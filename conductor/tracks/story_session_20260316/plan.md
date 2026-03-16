@@ -20,7 +20,7 @@
     - [x] Implement session-end logic and impact extraction.
 - [x] **Task: Conductor - User Manual Verification 'Session Progression Logic' (Protocol in workflow.md)** 0873d2f
 
-## Phase 3: Interactive Story UI
+## Phase 3: Interactive Story UI [checkpoint: a77618e]
 - [x] **Task: Story Session View (React)** 4da2857
     - [x] Implement UI for starting a session from the character profile.
     - [x] Build the scene narrative and choices display.
@@ -28,4 +28,4 @@
     - [x] Connect choice buttons to the backend API.
     - [x] Implement loading states and narrative transitions.
     - [x] Display session summary at the conclusion.
-- [~] **Task: Conductor - User Manual Verification 'Interactive Story UI' (Protocol in workflow.md)**
+- [x] **Task: Conductor - User Manual Verification 'Interactive Story UI' (Protocol in workflow.md)** a77618e
