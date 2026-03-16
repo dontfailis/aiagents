@@ -2,14 +2,23 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Any
 import uuid
 import httpx
 import os
 import json
 from a2a.client import A2ACardResolver, A2AClient
 from a2a.types import SendMessageRequest, MessageSendParams
-from media_service import GENERATED_MEDIA_DIR, ensure_character_portraits, ensure_media_dirs, ensure_scene_image, ensure_world_banner
+from media_service import (
+    GENERATED_MEDIA_DIR,
+    ensure_character_portraits,
+    ensure_media_dirs,
+    ensure_scene_image,
+    ensure_world_banner,
+    ensure_world_setting_preset,
+    generate_character_preview,
+    generate_world_preview,
+)
 
 app = FastAPI()
 
@@ -228,6 +237,8 @@ class CharacterCreate(BaseModel):
     archetype: str
     backstory: str
     visual_description: str
+    portrait_url: Optional[str] = None
+    portrait_urls: Optional[List[str]] = None
 
 class SessionCreate(BaseModel):
     character_id: str
@@ -236,9 +247,66 @@ class SessionCreate(BaseModel):
 class ChoiceSubmission(BaseModel):
     choice_id: int
 
+
+class WorldPreviewRequest(BaseModel):
+    setting_id: Optional[str] = None
+    name: str
+    era: str
+    environment: str
+    tone: str
+    description: Optional[str] = None
+
+
+class CharacterPreviewRequest(BaseModel):
+    world_id: str
+    name: str
+    archetype: str
+    backstory: str
+    visual_description: str
+
 @app.get("/")
 async def root():
     return {"message": "Frontend Web API Gateway"}
+
+
+@app.get("/api/previews/world-settings")
+async def get_world_setting_previews():
+    preset_ids = ["medieval-fantasy", "post-apocalyptic", "modern-mystery"]
+    return {
+        "presets": [
+            {
+                "setting_id": setting_id,
+                "image_url": ensure_world_setting_preset(setting_id, PUBLIC_API_BASE_URL),
+            }
+            for setting_id in preset_ids
+        ]
+    }
+
+
+@app.post("/api/previews/world")
+async def preview_world(preview_data: WorldPreviewRequest):
+    image_url = generate_world_preview(preview_data.model_dump(), PUBLIC_API_BASE_URL)
+    if not image_url:
+        return {
+            "image_url": None,
+            "error": "World preview generation is unavailable. Check Vertex AI authentication and try again.",
+        }
+    return {"image_url": image_url, "error": None}
+
+
+@app.post("/api/previews/character")
+async def preview_character(preview_data: CharacterPreviewRequest):
+    world = get_world_from_local_db(preview_data.world_id)
+    if not world:
+        raise HTTPException(status_code=404, detail="World not found")
+
+    image_urls = generate_character_preview(preview_data.model_dump(), world, PUBLIC_API_BASE_URL)
+    if not image_urls:
+        return {
+            "image_urls": [],
+            "error": "Character portrait generation is unavailable. Check Vertex AI authentication and try again.",
+        }
+    return {"image_urls": image_urls, "error": None}
 
 @app.post("/api/worlds", status_code=201)
 async def create_world(world_data: WorldCreate):
@@ -319,6 +387,20 @@ async def create_character(char_data: CharacterCreate):
     res = await send_a2a_message(AGENT_CREATECHARACTER_URL, prompt)
     if "error" in res and "raw_text" not in res:
         raise HTTPException(status_code=500, detail=res["error"])
+
+    preview_updates = {}
+    if char_data.portrait_urls:
+        preview_updates["portrait_urls"] = char_data.portrait_urls
+    if char_data.portrait_url:
+        preview_updates["portrait_url"] = char_data.portrait_url
+
+    if preview_updates:
+        if res.get("id"):
+            updated = update_local_document("characters", res["id"], preview_updates)
+            res = updated or {**res, **preview_updates}
+        else:
+            res = {**res, **preview_updates}
+
     return enrich_character_media(res)
 
 @app.get("/api/characters/{char_id}")

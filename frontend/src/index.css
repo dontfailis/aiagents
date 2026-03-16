@@ -683,6 +683,33 @@ img {
   min-height: 11rem;
 }
 
+.setting-card-media img,
+.generated-preview-media img {
+  height: 100%;
+  width: 100%;
+  object-fit: cover;
+}
+
+.setting-card-media img {
+  position: absolute;
+  inset: 0;
+}
+
+.setting-card-media::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(8, 12, 19, 0.08) 0%, rgba(8, 12, 19, 0.72) 100%);
+}
+
+.setting-card-media-placeholder {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 50% 20%, rgba(255, 255, 255, 0.12), transparent 22%),
+    linear-gradient(180deg, rgba(56, 67, 88, 0.52) 0%, rgba(19, 26, 40, 0.86) 100%);
+}
+
 .setting-card-body,
 .archetype-card-content {
   position: relative;
@@ -806,6 +833,14 @@ img {
   padding: 1.4rem;
 }
 
+.generated-preview-card {
+  margin-top: 1.25rem;
+  border: 1px solid rgba(101, 118, 145, 0.22);
+  border-radius: 1.2rem;
+  background: rgba(10, 15, 24, 0.72);
+  padding: 1rem;
+}
+
 .world-details-heading,
 .character-details-heading,
 .chronicle-card-header {
@@ -853,6 +888,76 @@ img {
   display: flex;
   gap: 0.75rem;
   flex-wrap: wrap;
+}
+
+.generated-preview-header,
+.preview-card-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.preview-card-actions {
+  margin-top: 1.2rem;
+}
+
+.generated-preview-media {
+  overflow: hidden;
+  margin-top: 1rem;
+  aspect-ratio: 16 / 9;
+  border-radius: 1rem;
+  background:
+    radial-gradient(circle at top, rgba(245, 201, 110, 0.12), transparent 34%),
+    linear-gradient(180deg, #273145 0%, #161d29 100%);
+}
+
+.generated-preview-empty {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 0.45rem;
+  padding: 1.2rem;
+  color: rgba(236, 243, 252, 0.84);
+}
+
+.generated-preview-empty span {
+  color: rgba(236, 243, 252, 0.68);
+}
+
+.compact-generate-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-height: 2.2rem;
+  border: 1px solid rgba(224, 183, 75, 0.36);
+  border-radius: 999px;
+  background: rgba(224, 183, 75, 0.12);
+  color: #f6dfa1;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 0.4rem 0.85rem;
+  cursor: pointer;
+}
+
+.compact-generate-button:disabled {
+  opacity: 0.55;
+}
+
+.inline-status {
+  color: rgba(236, 243, 252, 0.66);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.spin {
+  animation: spin 0.9s linear infinite;
 }
 
 .flow-footer,
@@ -1010,7 +1115,9 @@ img {
 }
 
 .portrait-placeholder img {
-  min-height: 16rem;
+  height: 100%;
+  width: 100%;
+  object-fit: cover;
 }
 
 .character-preview-card h2 {
@@ -1207,6 +1314,16 @@ img {
   border-radius: 1rem;
   background: rgba(17, 24, 36, 0.72);
   padding: 1rem;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .session-shell {

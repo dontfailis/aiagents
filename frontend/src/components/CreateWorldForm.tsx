@@ -1,8 +1,20 @@
-import { ArrowLeft, ArrowRight, Castle, Compass, Flame, Search, Sparkles, Sword } from 'lucide-react';
+import {
+  ArrowLeft,
+  ArrowRight,
+  Castle,
+  Compass,
+  Flame,
+  LoaderCircle,
+  PenSquare,
+  Search,
+  Sparkles,
+  Sword,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { createWorld } from '../lib/api';
+import { createWorld, generateWorldPreview, getWorldSettingPreviews } from '../lib/api';
 import {
+  CUSTOM_WORLD_SETTING_ID,
   WORLD_SETTINGS,
   WORLD_TONES,
   cardStyle,
@@ -11,7 +23,7 @@ import {
   suggestWorldDetails,
 } from '../lib/storyContent';
 
-const WORLD_STEP_LABELS = ['Setting', 'Tone', 'Archetype'];
+const WORLD_STEP_LABELS = ['Setting', 'Tone', 'Details'];
 
 const TONE_ICONS = {
   Adventure: Sword,
@@ -20,15 +32,26 @@ const TONE_ICONS = {
   Survival: Flame,
 };
 
+const SETTING_ICONS = {
+  'medieval-fantasy': Castle,
+  'post-apocalyptic': Flame,
+  'modern-mystery': Search,
+  [CUSTOM_WORLD_SETTING_ID]: PenSquare,
+};
+
 export default function CreateWorldForm() {
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
   const [settingId, setSettingId] = useState(WORLD_SETTINGS[0].id);
   const [toneId, setToneId] = useState(WORLD_TONES[0].id);
   const [detailSeed, setDetailSeed] = useState(0);
+  const [era, setEra] = useState(getSettingById(WORLD_SETTINGS[0].id).era);
   const [name, setName] = useState('');
   const [environment, setEnvironment] = useState('');
   const [description, setDescription] = useState('');
+  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
+  const [presetImageMap, setPresetImageMap] = useState<Record<string, string>>({});
+  const [previewLoading, setPreviewLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [createdWorld, setCreatedWorld] = useState<{
@@ -41,21 +64,82 @@ export default function CreateWorldForm() {
 
   useEffect(() => {
     const suggestion = suggestWorldDetails(settingId, toneId, detailSeed);
+    const selectedSetting = getSettingById(settingId);
+
+    setEra(selectedSetting.era);
     setName(suggestion.name);
     setEnvironment(suggestion.environment);
     setDescription(suggestion.description);
+    setError(null);
   }, [detailSeed, settingId, toneId]);
+
+  useEffect(() => {
+    async function loadPresetImages() {
+      try {
+        const response = await getWorldSettingPreviews();
+        const nextImages = response.presets.reduce<Record<string, string>>((accumulator, preset) => {
+          if (preset.image_url) {
+            accumulator[preset.setting_id] = preset.image_url;
+          }
+          return accumulator;
+        }, {});
+        setPresetImageMap(nextImages);
+      } catch {
+        setPresetImageMap({});
+      }
+    }
+
+    void loadPresetImages();
+  }, []);
+
+  useEffect(() => {
+    if (settingId === CUSTOM_WORLD_SETTING_ID) {
+      return;
+    }
+
+    const presetImage = presetImageMap[settingId];
+    if (presetImage && !previewImageUrl) {
+      setPreviewImageUrl(presetImage);
+    }
+  }, [presetImageMap, previewImageUrl, settingId]);
+
+  async function handleGeneratePreview() {
+    setPreviewLoading(true);
+    setError(null);
+
+    try {
+      const response = await generateWorldPreview({
+        setting_id: settingId === CUSTOM_WORLD_SETTING_ID ? undefined : settingId,
+        name,
+        era,
+        environment,
+        tone: getToneById(toneId).label,
+        description,
+      });
+
+      if (response.image_url) {
+        setPreviewImageUrl(response.image_url);
+      }
+
+      if (!response.image_url && response.error) {
+        setError(response.error);
+      }
+    } catch (previewError) {
+      setError(previewError instanceof Error ? previewError.message : 'Failed to generate world preview.');
+    } finally {
+      setPreviewLoading(false);
+    }
+  }
 
   async function handleFinalizeWorld() {
     setLoading(true);
     setError(null);
 
     try {
-      const selectedSetting = getSettingById(settingId);
       const selectedTone = getToneById(toneId);
       const world = await createWorld({
         name,
-        era: selectedSetting.era,
+        era,
         environment,
         tone: selectedTone.label,
         description,
@@ -105,6 +189,7 @@ export default function CreateWorldForm() {
   }
 
   const selectedSetting = getSettingById(settingId);
+  const selectedTone = getToneById(toneId);
 
   return (
     <main className={step === 2 ? 'world-flow-shell world-flow-shell-olive' : 'world-flow-shell'}>
@@ -131,28 +216,43 @@ export default function CreateWorldForm() {
           <>
             <section className="flow-intro">
               <h2>Choose a Setting</h2>
-              <p>Select the foundation for your world. You can reshape the details at the end.</p>
+              <p>Select a visual starting point, or choose Custom Setting and define the genre yourself.</p>
             </section>
 
             <div className="world-setting-grid">
-              {WORLD_SETTINGS.map((setting) => (
-                <button
-                  type="button"
-                  key={setting.id}
-                  className={settingId === setting.id ? 'setting-card selected' : 'setting-card'}
-                  style={cardStyle(setting.cardArt, setting.accent)}
-                  onClick={() => setSettingId(setting.id)}
-                >
-                  <div className="setting-card-media" />
-                  <div className="setting-card-body">
-                    <span className="setting-card-icon">
-                      <Castle size={28} color={setting.iconTone} />
-                    </span>
-                    <h3>{setting.label}</h3>
-                    <p>{setting.description}</p>
-                  </div>
-                </button>
-              ))}
+              {WORLD_SETTINGS.map((setting) => {
+                const SettingIcon =
+                  SETTING_ICONS[setting.id as keyof typeof SETTING_ICONS] ?? PenSquare;
+                const settingImageUrl = presetImageMap[setting.id];
+
+                return (
+                  <button
+                    type="button"
+                    key={setting.id}
+                    className={settingId === setting.id ? 'setting-card selected' : 'setting-card'}
+                    style={cardStyle(setting.cardArt, setting.accent)}
+                    onClick={() => {
+                      setSettingId(setting.id);
+                      setPreviewImageUrl(presetImageMap[setting.id] ?? null);
+                    }}
+                  >
+                    <div className="setting-card-media">
+                      {settingImageUrl ? (
+                        <img src={settingImageUrl} alt={setting.label} />
+                      ) : (
+                        <div className="setting-card-media-placeholder" />
+                      )}
+                    </div>
+                    <div className="setting-card-body">
+                      <span className="setting-card-icon">
+                        <SettingIcon size={28} color={setting.iconTone} />
+                      </span>
+                      <h3>{setting.label}</h3>
+                      <p>{setting.description}</p>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </>
         )}
@@ -195,39 +295,15 @@ export default function CreateWorldForm() {
                 <Sparkles size={16} />
                 NarrativeForge
               </div>
-              <p>Step 3 of 3: Archetype</p>
+              <p>Step 3 of 3: Details</p>
               <div className="world-archetype-bar">
                 <div className="world-archetype-bar-fill" />
               </div>
-              <h2>Story Archetype Selection</h2>
+              <h2>Refine the World and Generate a Preview</h2>
               <p>
-                Select the dominant narrative shape for <strong>{name}</strong>, then refine the
-                generated details below before you finalize.
+                Keep the preset as a starting point or rewrite it completely before you finalize the world.
               </p>
             </header>
-
-            <div className="world-archetype-grid">
-              {WORLD_TONES.map((tone) => {
-                const ToneIcon = TONE_ICONS[tone.label as keyof typeof TONE_ICONS] ?? Sparkles;
-
-                return (
-                  <button
-                    type="button"
-                    key={tone.id}
-                    className={toneId === tone.id ? 'archetype-card selected' : 'archetype-card'}
-                    style={cardStyle(tone.cardArt, tone.accent)}
-                    onClick={() => setToneId(tone.id)}
-                  >
-                    <div className="archetype-card-overlay" />
-                    <div className="archetype-card-content">
-                      <ToneIcon size={28} />
-                      <h3>{tone.label}</h3>
-                      <p>{tone.shortDescription}</p>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
 
             <section className="world-details-panel">
               <div className="world-details-heading">
@@ -246,6 +322,15 @@ export default function CreateWorldForm() {
 
               <div className="details-grid">
                 <label className="field-group">
+                  <span>World Style</span>
+                  <input
+                    className="input-shell"
+                    value={era}
+                    onChange={(event) => setEra(event.target.value)}
+                  />
+                </label>
+
+                <label className="field-group">
                   <span>World Name</span>
                   <input
                     className="input-shell"
@@ -262,6 +347,11 @@ export default function CreateWorldForm() {
                     onChange={(event) => setEnvironment(event.target.value)}
                   />
                 </label>
+
+                <label className="field-group">
+                  <span>Story Tone</span>
+                  <input className="input-shell" value={selectedTone.label} readOnly />
+                </label>
               </div>
 
               <label className="field-group">
@@ -274,13 +364,48 @@ export default function CreateWorldForm() {
                 />
               </label>
 
-              <div className="world-preview-banner">
-                <div>
-                  <strong>{selectedSetting.label}</strong>
-                  <span>{getToneById(toneId).label}</span>
+              <section className="generated-preview-card">
+                <div className="generated-preview-header">
+                  <div>
+                    <p className="section-eyebrow">Visual Idea</p>
+                    <h3>World preview</h3>
+                  </div>
+                  <button
+                    type="button"
+                    className="compact-generate-button"
+                    onClick={() => void handleGeneratePreview()}
+                    disabled={previewLoading || !name.trim() || !era.trim() || !environment.trim()}
+                  >
+                    {previewLoading ? (
+                      <>
+                        <LoaderCircle size={14} className="spin" />
+                        Generating
+                      </>
+                    ) : (
+                      'Generate'
+                    )}
+                  </button>
                 </div>
-                <p>{selectedSetting.environmentPool.join(' • ')}</p>
-              </div>
+
+                <div className="generated-preview-media">
+                  {previewImageUrl ? (
+                    <img src={previewImageUrl} alt={`${name || 'World'} preview`} />
+                  ) : (
+                    <div className="generated-preview-empty">
+                      <strong>{selectedSetting.label}</strong>
+                      <span>Generate a scene image from the world description when you are ready.</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="world-preview-banner">
+                  <div>
+                    <strong>{era || selectedSetting.label}</strong>
+                    <span>{selectedTone.label}</span>
+                  </div>
+                  <p>{environment || selectedSetting.environmentPool.join(' • ')}</p>
+                </div>
+              </section>
             </section>
           </>
         )}
@@ -307,7 +432,7 @@ export default function CreateWorldForm() {
               type="button"
               className="primary-button world-finalize-button"
               onClick={() => void handleFinalizeWorld()}
-              disabled={loading || !name.trim() || !environment.trim() || !description.trim()}
+              disabled={loading || !name.trim() || !era.trim() || !environment.trim() || !description.trim()}
             >
               {loading ? 'Finalizing...' : 'Finalize World'}
               {!loading && <ArrowRight size={16} />}

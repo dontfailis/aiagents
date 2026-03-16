@@ -30,6 +30,9 @@ export interface ArchetypeOption {
   cardArt: string;
 }
 
+export const CUSTOM_WORLD_SETTING_ID = 'custom-world';
+export const CUSTOM_ARCHETYPE_ID = 'Custom';
+
 export const WORLD_SETTINGS: WorldSettingOption[] = [
   {
     id: 'medieval-fantasy',
@@ -80,6 +83,23 @@ export const WORLD_SETTINGS: WorldSettingOption[] = [
       'A modern city hums with quiet corruption, where missing persons, sealed archives, and old societies all point to the same hidden hand.',
       'Streetlights, surveillance, and old money conceal a deeper network of secrets that only the reckless ever glimpse.',
       'Each district looks ordinary in daylight, but every alley and office tower conceals one more thread in a widening conspiracy.',
+    ],
+  },
+  {
+    id: CUSTOM_WORLD_SETTING_ID,
+    era: 'Custom Setting',
+    label: 'Custom Setting',
+    description: 'Start from scratch, describe the genre yourself, and shape the world without preset constraints.',
+    accent: '#d7ddd7',
+    iconTone: '#ffffff',
+    cardArt:
+      'radial-gradient(circle at 50% 14%, rgba(255, 255, 255, 0.14), transparent 22%), linear-gradient(180deg, rgba(91, 100, 113, 0.68) 0%, rgba(32, 38, 48, 0.9) 100%)',
+    environmentPool: ['Frontier capital', 'Fog-bound coast', 'Sanctum district'],
+    namePool: ['New Chronicle', 'Unnamed World', 'The Seventh Horizon'],
+    descriptionPool: [
+      'A fresh world is taking shape, with its tensions, power centers, and impossible promises still waiting to be defined.',
+      'This setting begins as an open canvas, ready for factions, mysteries, and landmarks that fit the story you want to tell.',
+      'The world is unwritten for now, leaving room to define its eras, conflicts, and strange rules on your own terms.',
     ],
   },
 ];
@@ -168,6 +188,14 @@ export const CHARACTER_ARCHETYPES: ArchetypeOption[] = [
     cardArt:
       'linear-gradient(180deg, rgba(10, 18, 20, 0.18) 0%, rgba(10, 18, 20, 0.9) 100%), radial-gradient(circle at 42% 20%, rgba(109, 189, 198, 0.3), transparent 36%)',
   },
+  {
+    id: CUSTOM_ARCHETYPE_ID,
+    label: 'Custom',
+    description: 'Define your own role, then tune the look, backstory, and portrait around that concept.',
+    accent: '#d9dbe0',
+    cardArt:
+      'linear-gradient(180deg, rgba(18, 21, 26, 0.18) 0%, rgba(18, 21, 26, 0.9) 100%), radial-gradient(circle at 42% 20%, rgba(217, 219, 224, 0.28), transparent 36%)',
+  },
 ];
 
 const LOOKS_BY_ARCHETYPE: Record<string, string[]> = {
@@ -177,6 +205,7 @@ const LOOKS_BY_ARCHETYPE: Record<string, string[]> = {
   Survivor: ['weathered', 'layered leathers', 'quick-eyed'],
   Merchant: ['tailored', 'signet ring', 'measured smile'],
   Wanderer: ['travel-worn', 'windburned', 'dusty cloak'],
+  Custom: ['distinctive', 'intentional style', 'story-marked presence'],
 };
 
 const BACKSTORIES_BY_ARCHETYPE: Record<string, string[]> = {
@@ -209,6 +238,11 @@ const BACKSTORIES_BY_ARCHETYPE: Record<string, string[]> = {
     'No border ever held for long, and each road left behind a lesson, an enemy, or a map nobody else has seen.',
     'This wayfarer learned to read people and weather with equal care, because both can turn lethal without warning.',
     'A restless soul with a knack for appearing where stories break open and vanish again before blame arrives.',
+  ],
+  Custom: [
+    'This figure does not fit neatly into any expected role, carrying a history defined more by unusual choices than tradition.',
+    'Their path through the world has been improvised, personal, and difficult to categorize, which is exactly what makes them dangerous.',
+    'They arrive with motives that resist easy labels, bringing a presence shaped by contradiction, survival, and conviction.',
   ],
 };
 

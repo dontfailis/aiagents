@@ -1,10 +1,24 @@
-import { ArrowLeft, ArrowRight, BookOpen, Coins, Map, RefreshCw, Shield, Sparkles, UserRound, VenetianMask, WandSparkles } from 'lucide-react';
+import {
+  ArrowLeft,
+  ArrowRight,
+  BookOpen,
+  Coins,
+  LoaderCircle,
+  Map,
+  RefreshCw,
+  Shield,
+  Sparkles,
+  UserRound,
+  VenetianMask,
+  WandSparkles,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { createCharacter, createSession, getWorld } from '../lib/api';
+import { createCharacter, createSession, generateCharacterPreview, getWorld } from '../lib/api';
 import {
   AGE_MARKS,
   CHARACTER_ARCHETYPES,
+  CUSTOM_ARCHETYPE_ID,
   ageFromIndex,
   cardStyle,
   getArchetypeById,
@@ -22,9 +36,8 @@ const ARCHETYPE_ICONS = {
   Survivor: Sparkles,
   Merchant: Coins,
   Wanderer: Map,
+  [CUSTOM_ARCHETYPE_ID]: WandSparkles,
 };
-
-const PORTRAIT_FILTERS = ['none', 'sepia(0.18) saturate(0.92)', 'contrast(1.08) brightness(0.98)', 'grayscale(0.08) saturate(1.15)'] as const;
 
 export default function CreateCharacterForm() {
   const { worldId } = useParams();
@@ -32,13 +45,16 @@ export default function CreateCharacterForm() {
   const [world, setWorld] = useState<World | null>(null);
   const [step, setStep] = useState(0);
   const [archetypeId, setArchetypeId] = useState('Rogue');
+  const [archetypeLabel, setArchetypeLabel] = useState(getArchetypeById('Rogue').label);
   const [detailSeed, setDetailSeed] = useState(0);
   const [name, setName] = useState('');
   const [ageIndex, setAgeIndex] = useState(1);
   const [backstory, setBackstory] = useState('');
   const [looks, setLooks] = useState<string[]>([]);
   const [lookDraft, setLookDraft] = useState('');
+  const [previewPortraitUrls, setPreviewPortraitUrls] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [previewLoading, setPreviewLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [createdCharacter, setCreatedCharacter] = useState<Character | null>(null);
@@ -75,6 +91,11 @@ export default function CreateCharacterForm() {
     setAgeIndex(suggestion.ageIndex);
     setBackstory(suggestion.backstory);
     setLooks(suggestion.looks);
+    setArchetypeLabel(getArchetypeById(archetypeId).label);
+    setPreviewPortraitUrls([]);
+    setSelectedPortraitIndex(0);
+    setCreatedCharacter(null);
+    setError(null);
   }, [archetypeId, detailSeed, world]);
 
   function addLookCue() {
@@ -87,6 +108,8 @@ export default function CreateCharacterForm() {
 
     setLooks((current) => [...current, nextCue]);
     setLookDraft('');
+    setPreviewPortraitUrls([]);
+    setCreatedCharacter(null);
   }
 
   function handleLookKeyDown(event: KeyboardEvent<HTMLInputElement>) {
@@ -101,29 +124,37 @@ export default function CreateCharacterForm() {
       return;
     }
 
-    setSubmitting(true);
+    setPreviewLoading(true);
     setError(null);
 
     try {
-      const character = await createCharacter({
+      const response = await generateCharacterPreview({
         world_id: worldId,
         name,
-        age: ageFromIndex(ageIndex),
-        archetype: archetypeId,
+        archetype: archetypeLabel.trim() || getArchetypeById(archetypeId).label,
         backstory,
         visual_description: looks.join(', '),
       });
-      setCreatedCharacter(character);
-      setStep(2);
-    } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : 'Failed to create character.');
+
+      if (response.image_urls.length) {
+        setPreviewPortraitUrls(response.image_urls);
+        setSelectedPortraitIndex(0);
+        setCreatedCharacter(null);
+        setStep(2);
+      }
+
+      if (!response.image_urls.length && response.error) {
+        setError(response.error);
+      }
+    } catch (previewError) {
+      setError(previewError instanceof Error ? previewError.message : 'Failed to generate character portraits.');
     } finally {
-      setSubmitting(false);
+      setPreviewLoading(false);
     }
   }
 
   async function handleConfirmCharacter() {
-    if (!createdCharacter || !worldId) {
+    if (!worldId) {
       return;
     }
 
@@ -131,8 +162,24 @@ export default function CreateCharacterForm() {
     setError(null);
 
     try {
+      let persistedCharacter = createdCharacter;
+
+      if (!persistedCharacter) {
+        persistedCharacter = await createCharacter({
+          world_id: worldId,
+          name,
+          age: ageFromIndex(ageIndex),
+          archetype: archetypeLabel.trim() || getArchetypeById(archetypeId).label,
+          backstory,
+          visual_description: looks.join(', '),
+          portrait_urls: previewPortraitUrls.length ? previewPortraitUrls : undefined,
+          portrait_url: previewPortraitUrls[selectedPortraitIndex],
+        });
+        setCreatedCharacter(persistedCharacter);
+      }
+
       const session = await createSession({
-        character_id: createdCharacter.id,
+        character_id: persistedCharacter.id,
         world_id: worldId,
       });
       navigate(`/session/${session.id}`);
@@ -159,11 +206,7 @@ export default function CreateCharacterForm() {
     );
   }
 
-  const portraitOptions = createdCharacter?.portrait_urls?.length
-    ? createdCharacter.portrait_urls
-    : createdCharacter
-      ? PORTRAIT_FILTERS.map(() => createdCharacter.portrait_url)
-      : [];
+  const previewPortraitUrl = previewPortraitUrls[selectedPortraitIndex] ?? previewPortraitUrls[0];
 
   return (
     <main className="character-flow-shell">
@@ -215,12 +258,13 @@ export default function CreateCharacterForm() {
           <section className="character-archetype-stage">
             <div className="flow-intro left">
               <h2>Choose an Archetype</h2>
-              <p>The AI suggestions for backstory, style, and portrait will follow this role.</p>
+              <p>Use a preset as a base, or pick Custom and define the role yourself in the next step.</p>
             </div>
 
             <div className="character-archetype-grid">
               {CHARACTER_ARCHETYPES.map((archetype) => {
-                const Icon = ARCHETYPE_ICONS[archetype.id as keyof typeof ARCHETYPE_ICONS] ?? WandSparkles;
+                const Icon =
+                  ARCHETYPE_ICONS[archetype.id as keyof typeof ARCHETYPE_ICONS] ?? WandSparkles;
 
                 return (
                   <button
@@ -247,14 +291,14 @@ export default function CreateCharacterForm() {
           <section className="character-details-layout">
             <aside className="character-preview-card">
               <div className="portrait-placeholder">
-                {createdCharacter?.portrait_url ? (
-                  <img src={createdCharacter.portrait_url} alt={createdCharacter.name} />
+                {previewPortraitUrl ? (
+                  <img src={previewPortraitUrl} alt={name || 'Character preview'} />
                 ) : (
                   <span>{name.slice(0, 1) || 'U'}</span>
                 )}
               </div>
               <h2>{name || 'Unnamed Character'}</h2>
-              <p>{getArchetypeById(archetypeId).label}</p>
+              <p>{archetypeLabel || 'Custom Role'}</p>
               <div className="preview-divider" />
               <div className="origin-traits">
                 <h3>Origin Traits</h3>
@@ -267,13 +311,33 @@ export default function CreateCharacterForm() {
                   ))}
                 </ul>
               </div>
+              <div className="preview-card-actions">
+                <button
+                  type="button"
+                  className="compact-generate-button"
+                  onClick={() => void handleGeneratePortraits()}
+                  disabled={previewLoading || !name.trim() || !backstory.trim()}
+                >
+                  {previewLoading ? (
+                    <>
+                      <LoaderCircle size={14} className="spin" />
+                      Generating
+                    </>
+                  ) : (
+                    'Generate'
+                  )}
+                </button>
+                {previewPortraitUrls.length > 0 && (
+                  <span className="inline-status">{previewPortraitUrls.length} portraits ready</span>
+                )}
+              </div>
             </aside>
 
             <div className="character-details-panel">
               <div className="character-details-heading">
                 <div>
                   <h2>Refine Details</h2>
-                  <p>Review and refine the AI&apos;s suggestions for your {archetypeId}.</p>
+                  <p>Change the role, biography, and look before you generate portraits.</p>
                 </div>
                 <button
                   type="button"
@@ -286,12 +350,29 @@ export default function CreateCharacterForm() {
 
               <div className="details-form">
                 <label className="field-group">
+                  <span>Role / Archetype</span>
+                  <input
+                    className="input-shell"
+                    value={archetypeLabel}
+                    onChange={(event) => {
+                      setArchetypeLabel(event.target.value);
+                      setPreviewPortraitUrls([]);
+                      setCreatedCharacter(null);
+                    }}
+                  />
+                </label>
+
+                <label className="field-group">
                   <span>Name</span>
                   <div className="input-with-action">
                     <input
                       className="input-shell"
                       value={name}
-                      onChange={(event) => setName(event.target.value)}
+                      onChange={(event) => {
+                        setName(event.target.value);
+                        setPreviewPortraitUrls([]);
+                        setCreatedCharacter(null);
+                      }}
                     />
                     <button
                       type="button"
@@ -311,7 +392,10 @@ export default function CreateCharacterForm() {
                     max={2}
                     step={1}
                     value={ageIndex}
-                    onChange={(event) => setAgeIndex(Number(event.target.value))}
+                    onChange={(event) => {
+                      setAgeIndex(Number(event.target.value));
+                      setCreatedCharacter(null);
+                    }}
                   />
                   <div className="slider-labels">
                     {AGE_MARKS.map((mark, index) => (
@@ -328,7 +412,11 @@ export default function CreateCharacterForm() {
                     <textarea
                       className="input-shell textarea-shell"
                       value={backstory}
-                      onChange={(event) => setBackstory(event.target.value)}
+                      onChange={(event) => {
+                        setBackstory(event.target.value);
+                        setPreviewPortraitUrls([]);
+                        setCreatedCharacter(null);
+                      }}
                       rows={5}
                     />
                     <button
@@ -349,7 +437,11 @@ export default function CreateCharacterForm() {
                         type="button"
                         key={cue}
                         className="look-chip"
-                        onClick={() => setLooks((current) => current.filter((item) => item !== cue))}
+                        onClick={() => {
+                          setLooks((current) => current.filter((item) => item !== cue));
+                          setPreviewPortraitUrls([]);
+                          setCreatedCharacter(null);
+                        }}
                       >
                         {cue}
                         <span>&times;</span>
@@ -371,36 +463,33 @@ export default function CreateCharacterForm() {
           </section>
         )}
 
-        {step === 2 && createdCharacter && (
+        {step === 2 && (
           <section className="portrait-stage">
             <header className="flow-intro left">
               <h2>Choose your portrait</h2>
               <p>
-                The AI created a portrait set for {createdCharacter.name}. Pick the version that
-                feels right before starting the session.
+                Select the image that best fits <strong>{name}</strong> before starting the session.
               </p>
             </header>
 
             <div className="portrait-grid">
-              {portraitOptions.map((portraitUrl, index) => (
+              {previewPortraitUrls.map((portraitUrl, index) => (
                 <button
                   type="button"
                   key={`${portraitUrl}-${index}`}
                   className={selectedPortraitIndex === index ? 'portrait-card selected' : 'portrait-card'}
                   onClick={() => setSelectedPortraitIndex(index)}
                 >
-                  <img
-                    src={portraitUrl}
-                    alt={createdCharacter.name}
-                    style={createdCharacter?.portrait_urls?.length ? undefined : { filter: PORTRAIT_FILTERS[index] }}
-                  />
+                  <img src={portraitUrl} alt={`${name} portrait ${index + 1}`} />
                   <span>Option {index + 1}</span>
                 </button>
               ))}
             </div>
 
             <div className="portrait-fit-reasoning">
-              <p>{createdCharacter.fit_reasoning}</p>
+              <p>
+                Generated from the current role, backstory, and appearance notes. Go back if you want to refine the prompt and regenerate.
+              </p>
             </div>
           </section>
         )}
@@ -417,7 +506,7 @@ export default function CreateCharacterForm() {
             Back
           </button>
 
-          {step < 1 && (
+          {step === 0 && (
             <button type="button" className="primary-button" onClick={() => setStep(1)}>
               Continue
               <ArrowRight size={16} />
@@ -428,20 +517,20 @@ export default function CreateCharacterForm() {
             <button
               type="button"
               className="primary-button"
-              onClick={() => void handleGeneratePortraits()}
-              disabled={submitting || !name.trim() || !backstory.trim()}
+              onClick={() => setStep(2)}
+              disabled={!previewPortraitUrls.length}
             >
-              {submitting ? 'Generating...' : 'Generate Portraits'}
-              {!submitting && <ArrowRight size={16} />}
+              Review Portraits
+              <ArrowRight size={16} />
             </button>
           )}
 
-          {step === 2 && createdCharacter && (
+          {step === 2 && (
             <button
               type="button"
               className="primary-button"
               onClick={() => void handleConfirmCharacter()}
-              disabled={submitting}
+              disabled={submitting || !previewPortraitUrls.length}
             >
               {submitting ? 'Starting Session...' : 'Confirm Character'}
               {!submitting && <ArrowRight size={16} />}

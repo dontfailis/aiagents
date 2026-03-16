@@ -19,7 +19,7 @@ export interface Character {
   archetype: string;
   backstory: string;
   visual_description: string;
-  portrait_url: string;
+  portrait_url?: string;
   portrait_urls?: string[];
   fit_reasoning: string;
   created_at: string;
@@ -72,4 +72,23 @@ export interface ChronicleEntry {
 export interface JoinWorldResponse {
   world: World;
   recent_events: ChronicleEntry[];
+}
+
+export interface WorldSettingPreset {
+  setting_id: string;
+  image_url?: string | null;
+}
+
+export interface WorldSettingPresetResponse {
+  presets: WorldSettingPreset[];
+}
+
+export interface WorldPreviewResponse {
+  image_url?: string | null;
+  error?: string | null;
+}
+
+export interface CharacterPreviewResponse {
+  image_urls: string[];
+  error?: string | null;
 }
