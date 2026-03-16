@@ -72,7 +72,6 @@ async def validate_character_fit(world_data: dict, char_data: dict):
     try:
         response = model.generate_content(prompt)
         text = response.text
-        # Extract JSON from markdown blocks if present
         if "```json" in text:
             text = text.split("```json")[1].split("```")[0].strip()
         elif "```" in text:
@@ -86,16 +85,57 @@ async def validate_character_fit(world_data: dict, char_data: dict):
 async def generate_character_portrait(world_data: dict, char_data: dict):
     """
     Generates an AI character portrait URL. 
-    Note: Real implementation would use Imagen or another Image gen API.
-    For this MVP/demo, we'll use a high-quality placeholder that matches the description.
     """
-    # In a real app, this would be a prompt for an Image Gen model
-    prompt = f"A professional character portrait of {char_data['name']}, a {char_data['age']} year old {char_data['archetype']}. " \
-             f"Setting: {world_data['era']} world of {world_data['name']}. " \
-             f"Visual Details: {char_data['visual_description']}. " \
-             f"Style: Consistent with {world_data['tone']} mood."
-    
-    # Placeholder using a service like Lexica or similar if we wanted real images,
-    # or just a high-quality placeholder image for now.
-    # Let's use a themed placeholder for the demo.
     return f"https://picsum.photos/seed/{char_data['name']}/512/512"
+
+async def generate_next_scene(world_data: dict, char_data: dict, history: list = None, last_choice: str = None):
+    """
+    Generates the next narrative scene and a set of choices.
+    """
+    model = genai.GenerativeModel('gemini-1.5-flash')
+    
+    history_str = ""
+    if history:
+        history_str = "PREVIOUS STORY EVENTS:\n" + "\n".join([f"Scene: {h['narrative']}\nChoice: {h['choice']}" for h in history])
+    
+    last_choice_str = f"The player chose: {last_choice}" if last_choice else "This is the start of the adventure."
+    
+    prompt = f"""
+    You are an expert game master. Generate the next scene in an asynchronous storytelling RPG.
+    
+    WORLD: {world_data['name']} ({world_data['era']}, {world_data['tone']})
+    CHARACTER: {char_data['name']}, a {char_data['age']} year old {char_data['archetype']}. Backstory: {char_data['backstory']}
+    
+    {history_str}
+    
+    {last_choice_str}
+    
+    TASK:
+    1. Write 2-3 paragraphs of immersive narrative for the current scene.
+    2. Provide 2-4 distinct, numbered choices for the player.
+    
+    Output in JSON format:
+    {{
+        "narrative": "the story text",
+        "choices": [
+            {{"id": 1, "text": "choice one description"}},
+            {{"id": 2, "text": "choice two description"}}
+        ]
+    }}
+    """
+    
+    try:
+        response = model.generate_content(prompt)
+        text = response.text
+        if "```json" in text:
+            text = text.split("```json")[1].split("```")[0].strip()
+        elif "```" in text:
+            text = text.split("```")[1].split("```")[0].strip()
+            
+        return json.loads(text)
+    except Exception as e:
+        # Fallback
+        return {
+            "narrative": f"The journey continues for {char_data['name']} in the {world_data['name']}.",
+            "choices": [{"id": 1, "text": "Press onward"}, {"id": 2, "text": "Look for shelter"}]
+        }

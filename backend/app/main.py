@@ -5,7 +5,7 @@ import uuid
 import secrets
 import string
 from .database import db, firestore
-from .ai import generate_world_intro, validate_character_fit, generate_character_portrait
+from .ai import generate_world_intro, validate_character_fit, generate_character_portrait, generate_next_scene
 
 app = FastAPI()
 
@@ -124,22 +124,18 @@ async def create_session(session_data: SessionCreate):
     char_doc = db.collection("characters").document(session_data.character_id).get()
     if not char_doc.exists:
         raise HTTPException(status_code=404, detail="Character not found")
+    char_data = char_doc.to_dict()
     
     world_doc = db.collection("worlds").document(session_data.world_id).get()
     if not world_doc.exists:
         raise HTTPException(status_code=404, detail="World not found")
+    world_data = world_doc.to_dict()
 
     session_id = str(uuid.uuid4())
     
-    # Placeholder for the first scene until the AI Scene Generation Service is implemented
-    first_scene = {
-        "scene_number": 1,
-        "narrative": "The adventure begins...",
-        "choices": [
-            {"id": 1, "text": "Explore the surroundings"},
-            {"id": 2, "text": "Wait and see what happens"}
-        ]
-    }
+    # Generate the first scene using AI
+    first_scene = await generate_next_scene(world_data, char_data)
+    first_scene["scene_number"] = 1
     
     session_dict = {
         "id": session_id,
@@ -153,7 +149,6 @@ async def create_session(session_data: SessionCreate):
     
     db.collection("sessions").document(session_id).set(session_dict)
     
-    # Response
     return {**session_dict, "created_at": "2026-03-16T21:35:00Z"}
 
 @app.get("/api/sessions/{session_id}")
