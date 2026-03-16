@@ -11,21 +11,21 @@
     - [x] Implement Gemini-powered scene generator (narrative + choices).
 - [x] **Task: Conductor - User Manual Verification 'Session Management Backend' (Protocol in workflow.md)** 3b6dd27
 
-## Phase 2: Session Progression Logic
+## Phase 2: Session Progression Logic [checkpoint: 0873d2f]
 - [x] **Task: Choice Processing API** e391930
     - [x] Write tests for submitting a choice (POST /api/sessions/:id/choices).
     - [x] Implement choice processing and AI next-scene generation.
 - [x] **Task: Session Conclusion Engine** 9b3f8f6
     - [x] Write tests for concluding a session and generating a summary.
     - [x] Implement session-end logic and impact extraction.
-- [~] **Task: Conductor - User Manual Verification 'Session Progression Logic' (Protocol in workflow.md)**
+- [x] **Task: Conductor - User Manual Verification 'Session Progression Logic' (Protocol in workflow.md)** 0873d2f
 
 ## Phase 3: Interactive Story UI
-- [ ] **Task: Story Session View (React)**
-    - [ ] Implement UI for starting a session from the character profile.
-    - [ ] Build the scene narrative and choices display.
-- [ ] **Task: Choice Interaction and Progress**
-    - [ ] Connect choice buttons to the backend API.
-    - [ ] Implement loading states and narrative transitions.
-    - [ ] Display session summary at the conclusion.
-- [ ] **Task: Conductor - User Manual Verification 'Interactive Story UI' (Protocol in workflow.md)**
+- [x] **Task: Story Session View (React)** 4da2857
+    - [x] Implement UI for starting a session from the character profile.
+    - [x] Build the scene narrative and choices display.
+- [x] **Task: Choice Interaction and Progress** 4da2857
+    - [x] Connect choice buttons to the backend API.
+    - [x] Implement loading states and narrative transitions.
+    - [x] Display session summary at the conclusion.
+- [~] **Task: Conductor - User Manual Verification 'Interactive Story UI' (Protocol in workflow.md)**
