@@ -5,6 +5,7 @@ import uuid
 import secrets
 import string
 from .database import db, firestore
+from .ai import generate_world_intro
 
 app = FastAPI()
 
@@ -28,10 +29,14 @@ async def create_world(world_data: WorldCreate):
     world_id = str(uuid.uuid4())
     share_code = generate_share_code()
     
+    # Generate the world introduction narrative
+    intro = await generate_world_intro(world_data.model_dump())
+    
     world_dict = world_data.model_dump()
     world_dict.update({
         "id": world_id,
         "share_code": share_code,
+        "intro": intro,
         "created_at": firestore.SERVER_TIMESTAMP
     })
     
@@ -42,6 +47,7 @@ async def create_world(world_data: WorldCreate):
     response_dict.update({
         "id": world_id,
         "share_code": share_code,
+        "intro": intro,
         "created_at": "2026-03-16T20:55:00Z"
     })
     

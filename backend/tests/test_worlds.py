@@ -19,6 +19,8 @@ class TestWorlds(unittest.TestCase):
         self.assertEqual(data['name'], 'The Shattered Realm')
         self.assertIn('id', data)
         self.assertIn('share_code', data)
+        self.assertIn('intro', data)
+        self.assertTrue(len(data['intro']) > 0)
         return data['id']
 
     def test_get_world(self):
@@ -38,6 +40,7 @@ class TestWorlds(unittest.TestCase):
         data = response.json()
         self.assertEqual(data['name'], 'Test World')
         self.assertEqual(data['id'], world_id)
+        self.assertIn('intro', data)
 
 if __name__ == '__main__':
     unittest.main()
