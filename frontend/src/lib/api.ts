@@ -174,3 +174,37 @@ export async function concludeSession(sessionId: string) {
     throw new Error(getErrorMessage(error, 'Failed to conclude session.'));
   }
 }
+
+export async function createSessionNarration(sessionId: string) {
+  try {
+    const response = await api.post<{ audio_url: string; scene_number: number }>(
+      `/api/sessions/${sessionId}/narration`,
+    );
+    return response.data;
+  } catch (error) {
+    throw new Error(getErrorMessage(error, 'Failed to generate narration.'));
+  }
+}
+
+export async function createSessionVideo(sessionId: string) {
+  try {
+    const response = await api.post<{ status: string; scene_number: number; video_url?: string }>(
+      `/api/sessions/${sessionId}/video`,
+    );
+    return response.data;
+  } catch (error) {
+    throw new Error(getErrorMessage(error, 'Failed to start scene video generation.'));
+  }
+}
+
+export async function getSessionVideo(sessionId: string, sceneNumber: number) {
+  try {
+    const response = await api.get<{ status: string; scene_number: number; video_url?: string }>(
+      `/api/sessions/${sessionId}/video`,
+      { params: { scene_number: sceneNumber } },
+    );
+    return response.data;
+  } catch (error) {
+    throw new Error(getErrorMessage(error, 'Failed to load scene video status.'));
+  }
+}

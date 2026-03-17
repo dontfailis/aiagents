@@ -1841,8 +1841,67 @@ img {
     padding-inline: 1rem;
   }
 
-  .session-story-text,
-  .session-choice-button {
-    font-size: 1.15rem;
-  }
+.session-story-text,
+.session-choice-button {
+  font-size: 1.15rem;
+}
+}
+
+.session-story-toolbar {
+  display: flex;
+  gap: 0.7rem;
+  justify-content: flex-end;
+  margin-bottom: 0.9rem;
+  flex-wrap: wrap;
+}
+
+.session-audio-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid rgba(224, 231, 255, 0.14);
+  border-radius: 999px;
+  background: rgba(19, 28, 46, 0.82);
+  color: #dbe5f5;
+  padding: 0.55rem 0.85rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.session-audio-button:hover {
+  border-color: rgba(224, 183, 75, 0.3);
+}
+
+.session-choice-loading {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin-bottom: 0.9rem;
+  color: rgba(226, 232, 240, 0.74);
+  font-size: 0.95rem;
+}
+
+.session-choice-substatus {
+  display: block;
+  margin-top: 0.3rem;
+  color: rgba(152, 164, 188, 0.9);
+  font-size: 0.76rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.session-scene-video {
+  overflow: hidden;
+  margin-top: 1.25rem;
+  border: 1px solid rgba(224, 231, 255, 0.12);
+  border-radius: 1rem;
+  background: rgba(15, 23, 42, 0.62);
+}
+
+.session-scene-video video {
+  display: block;
+  width: 100%;
+  max-height: 26rem;
+  background: #05070d;
 }

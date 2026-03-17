@@ -1,6 +1,7 @@
 fastapi
 uvicorn[standard]
 google-cloud-firestore
+google-cloud-storage
 python-dotenv
 httpx
 google-adk>=1.27.0

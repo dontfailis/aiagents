@@ -50,6 +50,8 @@ export interface Session {
   status: 'in_progress' | 'completed';
   current_scene: StoryScene;
   history: SessionHistoryEntry[];
+  prefetched_choice_ids?: number[];
+  prefetch_status?: 'pending' | 'ready';
   summary?: string;
   created_at: string;
   updated_at?: string;
