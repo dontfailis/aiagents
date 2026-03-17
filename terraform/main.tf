@@ -181,10 +181,19 @@ module "firestore-1" {
   location    = var.location
   delete_protection_state = "DELETE_PROTECTION_DISABLED"
 }
+resource "google_apphub_application" "apphub" {
+  project        = var.project_id
+  location       = var.location
+  application_id = var.apphub_application_id
+  scope {
+    type = "REGIONAL"
+  }
+}
+
 module "apphub" {
   source         = "github.com/GoogleCloudPlatform/terraform-google-apphub?ref=v0.4.0"
   project_id     = var.project_id
   location       = var.location
-  service_uris   = concat([module.cloud-run-1.apphub_service_uri], module.lb-backend-1.apphub_service_uri, [module.cloud-run-2.apphub_service_uri], [module.cloud-run-3.apphub_service_uri], [module.cloud-run-4.apphub_service_uri], [module.memorystore-1.apphub_service_uri], [module.cloud-run-5.apphub_service_uri], [module.cloud-run-6.apphub_service_uri])
-  application_id = var.apphub_application_id
+  service_uris   = concat([module.cloud-run-1.apphub_service_uri], [module.cloud-run-2.apphub_service_uri], [module.cloud-run-3.apphub_service_uri], [module.cloud-run-4.apphub_service_uri], [module.memorystore-1.apphub_service_uri], [module.cloud-run-5.apphub_service_uri], [module.cloud-run-6.apphub_service_uri])
+  application_id = google_apphub_application.apphub.application_id
 }

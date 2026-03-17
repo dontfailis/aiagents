@@ -53,6 +53,17 @@ resource "google_artifact_registry_repository" "agents" {
   depends_on = [google_project_service.artifactregistry]
 }
 
+data "google_project" "project" {
+  project_id = var.project_id
+}
+
+resource "google_secret_manager_secret_iam_member" "cloudbuild_secret_accessor" {
+  project   = var.project_id
+  secret_id = split("/", var.github_oauth_token_secret_version)[3]
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:service-${data.google_project.project.number}@gcp-sa-cloudbuild.iam.gserviceaccount.com"
+}
+
 # 2nd-gen Cloud Build GitHub connection.
 # Before running `terraform apply` you must authorise the Cloud Build GitHub App
 # once in the GCP Console (Cloud Build → Repositories → Connect Repository).
@@ -70,7 +81,10 @@ resource "google_cloudbuildv2_connection" "github" {
     }
   }
 
-  depends_on = [google_project_service.cloudbuild]
+  depends_on = [
+    google_project_service.cloudbuild,
+    google_secret_manager_secret_iam_member.cloudbuild_secret_accessor
+  ]
 }
 
 # Link the specific GitHub repository to the connection
