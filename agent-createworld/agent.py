@@ -21,7 +21,7 @@ SYSTEM_INSTRUCTION = (
 
 base_mcp = os.getenv("cloud_run_1_SERVICE_ENDPOINT", os.getenv("MCP_SERVER_URL", "http://localhost:8080")).rstrip("/")
 mcp_url = f"{base_mcp}/mcp"
-logger.info(f"--- 🔧 Connecting to MCP Server at {mcp_url} ---")
+logger.info(f"--- 🔧 MCP Server URL configured: {mcp_url} ---")
 
 root_agent = LlmAgent(
     model="gemini-2.5-flash",
@@ -30,7 +30,8 @@ root_agent = LlmAgent(
     instruction=SYSTEM_INSTRUCTION,
     tools=[
         MCPToolset(
-            connection_params=StreamableHTTPConnectionParams(url=mcp_url)
+            connection_params=StreamableHTTPConnectionParams(url=mcp_url),
+            lazy_init=True,
         )
     ],
 )
