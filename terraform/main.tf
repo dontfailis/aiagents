@@ -158,6 +158,7 @@ module "cloud-run-6" {
   containers                    = [{"ports" = {"container_port" = 8080, "name" = "http1"}, "resources" = {"cpu_idle" = true, "startup_cpu_boost" = false}, "container_image" = "us-docker.pkg.dev/cloudrun/container/hello", "container_name" = "service-container", "env_vars" = {"cloud_run_1_SERVICE_ENDPOINT" = module.cloud-run-1.service_uri, "AGENT_CREATEWORLD_URL" = var.agent_createworld_url, "AGENT_CREATECHARACTER_URL" = var.agent_createcharacter_url, "AGENT_NARRATIVE_URL" = var.agent_narrative_url, "AGENT_OPTIONGEN_URL" = var.agent_optiongen_url}}]
   gpu_zonal_redundancy_disabled = false
   service_account_project_roles = ["roles/run.invoker"]
+  members                       = ["allUsers"]
   vpc_access = {
     egress = "ALL_TRAFFIC"
     network_interfaces = {
