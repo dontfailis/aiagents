@@ -14,13 +14,15 @@ import {
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { createCharacter, createSession, generateCharacterPreview, getWorld } from '../lib/api';
+import { createCharacter, createSession, getWorld } from '../lib/api';
 import {
   AGE_MARKS,
   CHARACTER_ARCHETYPES,
   CUSTOM_ARCHETYPE_ID,
   ageFromIndex,
   cardStyle,
+  getArchetypeCardPreview,
+  getPresetPortraitsForArchetype,
   getArchetypeById,
   suggestCharacterDetails,
 } from '../lib/storyContent';
@@ -59,6 +61,7 @@ export default function CreateCharacterForm() {
   const [error, setError] = useState<string | null>(null);
   const [createdCharacter, setCreatedCharacter] = useState<Character | null>(null);
   const [selectedPortraitIndex, setSelectedPortraitIndex] = useState(0);
+  const [craftStage, setCraftStage] = useState(0);
 
   useEffect(() => {
     async function loadWorld() {
@@ -87,16 +90,30 @@ export default function CreateCharacterForm() {
     }
 
     const suggestion = suggestCharacterDetails(archetypeId, world, detailSeed);
+    const presetPortraits = getPresetPortraitsForArchetype(archetypeId);
     setName(suggestion.name);
     setAgeIndex(suggestion.ageIndex);
     setBackstory(suggestion.backstory);
     setLooks(suggestion.looks);
     setArchetypeLabel(getArchetypeById(archetypeId).label);
-    setPreviewPortraitUrls([]);
+    setPreviewPortraitUrls(presetPortraits);
     setSelectedPortraitIndex(0);
     setCreatedCharacter(null);
     setError(null);
   }, [archetypeId, detailSeed, world]);
+
+  useEffect(() => {
+    if (!submitting) {
+      setCraftStage(0);
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      setCraftStage((current) => (current + 1) % 3);
+    }, 1100);
+
+    return () => window.clearInterval(intervalId);
+  }, [submitting]);
 
   function addLookCue() {
     const nextCue = lookDraft.trim().toLowerCase();
@@ -128,26 +145,13 @@ export default function CreateCharacterForm() {
     setError(null);
 
     try {
-      const response = await generateCharacterPreview({
-        world_id: worldId,
-        name,
-        archetype: archetypeLabel.trim() || getArchetypeById(archetypeId).label,
-        backstory,
-        visual_description: looks.join(', '),
-      });
-
-      if (response.image_urls.length) {
-        setPreviewPortraitUrls(response.image_urls);
-        setSelectedPortraitIndex(0);
-        setCreatedCharacter(null);
-        setStep(2);
-      }
-
-      if (!response.image_urls.length && response.error) {
-        setError(response.error);
-      }
+      const presetPortraits = getPresetPortraitsForArchetype(archetypeId);
+      setPreviewPortraitUrls(presetPortraits);
+      setSelectedPortraitIndex(0);
+      setCreatedCharacter(null);
+      setStep(2);
     } catch (previewError) {
-      setError(previewError instanceof Error ? previewError.message : 'Failed to generate character portraits.');
+      setError(previewError instanceof Error ? previewError.message : 'Failed to prepare character portraits.');
     } finally {
       setPreviewLoading(false);
     }
@@ -210,9 +214,37 @@ export default function CreateCharacterForm() {
   }
 
   const previewPortraitUrl = previewPortraitUrls[selectedPortraitIndex] ?? previewPortraitUrls[0];
+  const craftStages = [
+    `Binding ${name || 'your character'} to ${world.name}`,
+    `Charting the first threat in ${world.environment}`,
+    `Setting the opening move of your adventure`,
+  ];
 
   return (
     <main className="character-flow-shell">
+      {submitting && (
+        <div className="creation-ritual">
+          <div className="creation-ritual-backdrop" />
+          <div className="creation-ritual-panel">
+            <p className="section-eyebrow">Crafting Your Adventure</p>
+            <h2>{craftStages[craftStage]}</h2>
+            <p>
+              We are sealing the character, preparing the first scene, and opening the story in{' '}
+              <strong>{world.environment}</strong>.
+            </p>
+            <div className="creation-ritual-progress">
+              <span className={craftStage >= 0 ? 'active' : ''}>Identity</span>
+              <span className={craftStage >= 1 ? 'active' : ''}>World Thread</span>
+              <span className={craftStage >= 2 ? 'active' : ''}>Opening Scene</span>
+            </div>
+            {previewPortraitUrl && (
+              <div className="creation-ritual-portrait">
+                <img src={previewPortraitUrl} alt={name || 'Character portrait'} />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
       <div className="character-frame">
         <nav className="character-nav">
           <Link to="/" className="brand-chip brand-chip-light">
@@ -268,6 +300,7 @@ export default function CreateCharacterForm() {
               {CHARACTER_ARCHETYPES.map((archetype) => {
                 const Icon =
                   ARCHETYPE_ICONS[archetype.id as keyof typeof ARCHETYPE_ICONS] ?? WandSparkles;
+                const archetypePreview = getArchetypeCardPreview(archetype.id);
 
                 return (
                   <button
@@ -278,6 +311,9 @@ export default function CreateCharacterForm() {
                     onClick={() => setArchetypeId(archetype.id)}
                   >
                     <div className="archetype-card-overlay" />
+                    <div className="archetype-card-media">
+                      <img src={archetypePreview} alt={`${archetype.label} example`} />
+                    </div>
                     <div className="archetype-card-content">
                       <Icon size={28} />
                       <h3>{archetype.label}</h3>
@@ -324,14 +360,14 @@ export default function CreateCharacterForm() {
                   {previewLoading ? (
                     <>
                       <LoaderCircle size={14} className="spin" />
-                      Generating
+                      Preparing
                     </>
                   ) : (
-                    'Generate'
+                    'Load Preset Portraits'
                   )}
                 </button>
                 {previewPortraitUrls.length > 0 && (
-                  <span className="inline-status">{previewPortraitUrls.length} portraits ready</span>
+                  <span className="inline-status">{previewPortraitUrls.length} class portraits ready</span>
                 )}
               </div>
             </aside>
@@ -491,7 +527,7 @@ export default function CreateCharacterForm() {
 
             <div className="portrait-fit-reasoning">
               <p>
-                Generated from the current role, backstory, and appearance notes. Go back if you want to refine the prompt and regenerate.
+                These portraits are pre-crafted to match the class fantasy quickly. Go back if you want to refine the role, biography, or appearance cues before entering the story.
               </p>
             </div>
           </section>

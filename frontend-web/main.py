@@ -330,6 +330,51 @@ def build_opening_scene(world: dict, character: dict) -> dict:
     ]
     return {"narrative": narrative, "choices": choices}
 
+
+def build_scene_choices(world: dict, character: dict, scene_number: int) -> List[dict]:
+    archetype = character["archetype"]
+    environment = world["environment"]
+    return [
+        {"id": 1, "text": f"Investigate the shifting mood in {environment}"},
+        {"id": 2, "text": f"Push forward using your {archetype.lower()} instincts"},
+        {"id": 3, "text": "Take a risk that could change the balance of the scene"},
+    ]
+
+
+def build_next_scene(world: dict, character: dict, session: dict, selected_choice: dict | None) -> dict:
+    current_scene = session.get("current_scene", {}) or {}
+    current_scene_number = int(current_scene.get("scene_number") or 1)
+    next_scene_number = current_scene_number + 1
+    choice_text = (selected_choice or {}).get("text", "Press forward into the unknown")
+
+    narrative = (
+        f"Scene {next_scene_number} opens with the consequences of a clear decision: {choice_text}. "
+        f"In {world['environment']}, the pressure around {character['name']} changes immediately, and the tone of {world['name']} turns the moment into a test of intent rather than chance.\n\n"
+        f"{character['name']} feels the world answer back. Allies, threats, and hidden openings begin to shift around this choice, creating a new angle on the same conflict and a sharper path into the story."
+    )
+
+    return {
+        "scene_number": next_scene_number,
+        "narrative": narrative,
+        "choices": build_scene_choices(world, character, next_scene_number),
+    }
+
+
+def build_prefetched_session_branches(world: dict, character: dict, session: dict) -> dict:
+    current_scene = session.get("current_scene", {}) or {}
+    choices = current_scene.get("choices", []) or []
+    prefetched = {}
+    for choice in choices:
+        next_scene = build_next_scene(world, character, session, choice)
+        prefetched[str(choice["id"])] = {
+            "scene_number": next_scene["scene_number"],
+            "narrative": next_scene["narrative"],
+            "choices": next_scene["choices"],
+            "selected_choice_id": choice["id"],
+            "selected_choice_text": choice["text"],
+        }
+    return prefetched
+
 def enrich_world_media(world: dict) -> dict:
     banner_url = world.get("banner_url") or ensure_world_banner(world, PUBLIC_API_BASE_URL)
     if banner_url and world.get("id"):
@@ -672,6 +717,7 @@ async def create_session(session_data: SessionCreate):
         "history": [],
         "created_at": now_iso(),
     }
+    session["prefetched_choices"] = build_prefetched_session_branches(world, character, session)
     create_local_document("sessions", session)
     return enrich_session_media(session)
 
@@ -689,32 +735,43 @@ async def get_session(session_id: str):
 
 @app.post("/api/sessions/{session_id}/choices")
 async def submit_choice(session_id: str, submission: ChoiceSubmission):
-    prompt = f"""The player chose option ID {submission.choice_id} for session_id {session_id}.
-    1. Fetch the session.
-    2. Generate the next narrative scene (2-3 paragraphs).
-    3. Update the session using update_session tool with the new narrative and an empty choices list.
-    Return the updated session JSON.
-    """
-    res = await send_a2a_message(AGENT_NARRATIVE_URL, prompt)
-    
-    if "id" in res and "current_scene" in res:
-        narrative = res["current_scene"].get("narrative", "")
-        scene_num = res["current_scene"].get("scene_number", 2)
-        
-        choices_prompt = f"Generate JSON choices for this scene:\n{narrative}"
-        choices_res = await send_a2a_message(AGENT_OPTIONGEN_URL, choices_prompt)
-        
-        if isinstance(choices_res, list):
-            update_prompt = f"""Use update_session tool on session_id: {res["id"]}.
-            new_narrative: {narrative}
-            new_choices: {json.dumps(choices_res)}
-            scene_number: {scene_num}
-            history_entry: {json.dumps({"scene_number": scene_num, "narrative": narrative, "choice": "made a choice"})}
-            """
-            final_res = await send_a2a_message(AGENT_NARRATIVE_URL, update_prompt)
-            return enrich_session_media(final_res)
-            
-    return enrich_session_media(res)
+    session = load_local_db().get("sessions", {}).get(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    world = get_world_from_local_db(session.get("world_id", ""))
+    if not world:
+        raise HTTPException(status_code=404, detail="World not found")
+
+    character = get_character_from_local_db(session.get("character_id", ""))
+    if not character:
+        raise HTTPException(status_code=404, detail="Character not found")
+
+    current_scene = session.get("current_scene", {}) or {}
+    current_choices = current_scene.get("choices", []) or []
+    selected_choice = next((choice for choice in current_choices if choice.get("id") == submission.choice_id), None)
+    prefetched_choices = session.get("prefetched_choices", {}) or {}
+    prefetched = prefetched_choices.get(str(submission.choice_id))
+
+    next_scene = prefetched or build_next_scene(world, character, session, selected_choice)
+    history_entry = {
+        "scene_number": current_scene.get("scene_number", 1),
+        "narrative": current_scene.get("narrative", ""),
+        "choice": (selected_choice or {}).get("text", "made a choice"),
+    }
+    updated_session = {
+        **session,
+        "current_scene": {
+            "scene_number": next_scene["scene_number"],
+            "narrative": next_scene["narrative"],
+            "choices": next_scene["choices"],
+        },
+        "history": session.get("history", []) + [history_entry],
+        "updated_at": now_iso(),
+    }
+    updated_session["prefetched_choices"] = build_prefetched_session_branches(world, character, updated_session)
+    updated = update_local_document("sessions", session_id, updated_session)
+    return enrich_session_media(updated or updated_session)
 
 @app.post("/api/sessions/{session_id}/conclude")
 async def conclude_session(session_id: str):

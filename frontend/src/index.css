@@ -683,19 +683,27 @@ img {
   min-height: 11rem;
 }
 
+.archetype-card-media {
+  position: relative;
+  min-height: 12rem;
+}
+
 .setting-card-media img,
-.generated-preview-media img {
+.generated-preview-media img,
+.archetype-card-media img {
   height: 100%;
   width: 100%;
   object-fit: cover;
 }
 
-.setting-card-media img {
+.setting-card-media img,
+.archetype-card-media img {
   position: absolute;
   inset: 0;
 }
 
-.setting-card-media::after {
+.setting-card-media::after,
+.archetype-card-media::after {
   content: '';
   position: absolute;
   inset: 0;
@@ -716,11 +724,27 @@ img {
   z-index: 1;
 }
 
+.character-archetype-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 21rem;
+  text-align: left;
+}
+
 .setting-card-body {
   display: flex;
   flex-direction: column;
   gap: 0.8rem;
   padding: 1.3rem;
+}
+
+.archetype-card-content {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.8rem;
+  justify-content: flex-end;
+  padding: 1.2rem;
 }
 
 .setting-card-icon,
@@ -1660,6 +1684,89 @@ img {
   padding: 1rem 0;
 }
 
+.creation-ritual {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+}
+
+.creation-ritual-backdrop {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(224, 183, 75, 0.18), transparent 24%),
+    radial-gradient(circle at 78% 18%, rgba(113, 149, 255, 0.18), transparent 24%),
+    linear-gradient(180deg, rgba(7, 10, 18, 0.82) 0%, rgba(7, 10, 18, 0.94) 100%);
+  backdrop-filter: blur(18px);
+}
+
+.creation-ritual-panel {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 34rem);
+  border: 1px solid rgba(225, 233, 247, 0.14);
+  border-radius: 1.8rem;
+  background: linear-gradient(180deg, rgba(23, 29, 42, 0.95) 0%, rgba(13, 18, 29, 0.98) 100%);
+  box-shadow: 0 28px 100px rgba(0, 0, 0, 0.42);
+  padding: 2rem;
+  text-align: center;
+}
+
+.creation-ritual-panel h2 {
+  margin: 0.5rem 0 0;
+  font-family: 'Cinzel', serif;
+  font-size: clamp(1.8rem, 4vw, 2.6rem);
+  line-height: 1.15;
+}
+
+.creation-ritual-panel p {
+  margin: 1rem 0 0;
+  color: rgba(226, 232, 240, 0.76);
+}
+
+.creation-ritual-progress {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.6rem;
+  margin-top: 1.4rem;
+}
+
+.creation-ritual-progress span {
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 999px;
+  background: rgba(30, 41, 59, 0.55);
+  color: rgba(148, 163, 184, 0.88);
+  padding: 0.6rem 0.8rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.creation-ritual-progress span.active {
+  border-color: rgba(224, 183, 75, 0.36);
+  background: rgba(224, 183, 75, 0.14);
+  color: #f8e7b2;
+}
+
+.creation-ritual-portrait {
+  overflow: hidden;
+  width: min(100%, 14rem);
+  margin: 1.5rem auto 0;
+  border: 1px solid rgba(226, 232, 240, 0.14);
+  border-radius: 1.3rem;
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.28);
+}
+
+.creation-ritual-portrait img {
+  aspect-ratio: 1 / 1.16;
+  width: 100%;
+  object-fit: cover;
+}
+
 @media (max-width: 1024px) {
   .landing-actions,
   .world-setting-grid,
@@ -1674,6 +1781,10 @@ img {
   }
 
   .character-details-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .creation-ritual-progress {
     grid-template-columns: 1fr;
   }
 }

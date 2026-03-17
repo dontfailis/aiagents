@@ -30,6 +30,8 @@ export interface ArchetypeOption {
   cardArt: string;
 }
 
+const MEDIA_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000';
+
 export const CUSTOM_WORLD_SETTING_ID = 'custom-world';
 export const CUSTOM_ARCHETYPE_ID = 'Custom';
 
@@ -246,6 +248,51 @@ const BACKSTORIES_BY_ARCHETYPE: Record<string, string[]> = {
   ],
 };
 
+const ARCHETYPE_PORTRAIT_SETS: Record<string, string[]> = {
+  Rogue: [
+    `${MEDIA_BASE_URL}/generated/previews/characters/333691c59e1607f1_1.png`,
+    `${MEDIA_BASE_URL}/generated/previews/characters/333691c59e1607f1_2.png`,
+    `${MEDIA_BASE_URL}/generated/previews/characters/333691c59e1607f1_3.png`,
+    `${MEDIA_BASE_URL}/generated/previews/characters/333691c59e1607f1_4.png`,
+  ],
+  Scholar: [
+    `${MEDIA_BASE_URL}/generated/previews/characters/2f4dabe3fe5126bd_1.png`,
+    `${MEDIA_BASE_URL}/generated/previews/characters/2f4dabe3fe5126bd_2.png`,
+    `${MEDIA_BASE_URL}/generated/previews/characters/2f4dabe3fe5126bd_3.png`,
+    `${MEDIA_BASE_URL}/generated/previews/characters/2f4dabe3fe5126bd_4.png`,
+  ],
+  Warrior: [
+    `${MEDIA_BASE_URL}/generated/previews/characters/9521b44051a57c61_1.png`,
+    `${MEDIA_BASE_URL}/generated/previews/characters/9521b44051a57c61_2.png`,
+    `${MEDIA_BASE_URL}/generated/previews/characters/9521b44051a57c61_3.png`,
+    `${MEDIA_BASE_URL}/generated/previews/characters/9521b44051a57c61_4.png`,
+  ],
+  Survivor: [
+    `${MEDIA_BASE_URL}/generated/previews/characters/9521b44051a57c61_1.png`,
+    `${MEDIA_BASE_URL}/generated/previews/characters/9521b44051a57c61_2.png`,
+    `${MEDIA_BASE_URL}/generated/previews/characters/9521b44051a57c61_3.png`,
+    `${MEDIA_BASE_URL}/generated/previews/characters/9521b44051a57c61_4.png`,
+  ],
+  Merchant: [
+    `${MEDIA_BASE_URL}/generated/previews/characters/2f4dabe3fe5126bd_1.png`,
+    `${MEDIA_BASE_URL}/generated/previews/characters/2f4dabe3fe5126bd_2.png`,
+    `${MEDIA_BASE_URL}/generated/previews/characters/2f4dabe3fe5126bd_3.png`,
+    `${MEDIA_BASE_URL}/generated/previews/characters/2f4dabe3fe5126bd_4.png`,
+  ],
+  Wanderer: [
+    `${MEDIA_BASE_URL}/generated/previews/characters/333691c59e1607f1_1.png`,
+    `${MEDIA_BASE_URL}/generated/previews/characters/333691c59e1607f1_2.png`,
+    `${MEDIA_BASE_URL}/generated/previews/characters/333691c59e1607f1_3.png`,
+    `${MEDIA_BASE_URL}/generated/previews/characters/333691c59e1607f1_4.png`,
+  ],
+  Custom: [
+    `${MEDIA_BASE_URL}/generated/previews/characters/333691c59e1607f1_1.png`,
+    `${MEDIA_BASE_URL}/generated/previews/characters/2f4dabe3fe5126bd_2.png`,
+    `${MEDIA_BASE_URL}/generated/previews/characters/9521b44051a57c61_3.png`,
+    `${MEDIA_BASE_URL}/generated/previews/characters/333691c59e1607f1_4.png`,
+  ],
+};
+
 export const AGE_MARKS = [
   { label: 'Young', value: 19 },
   { label: 'Adult', value: 27 },
@@ -311,6 +358,14 @@ export function suggestCharacterDetails(
 
 export function ageFromIndex(index: number) {
   return AGE_MARKS[index]?.value ?? AGE_MARKS[1].value;
+}
+
+export function getPresetPortraitsForArchetype(archetypeId: string) {
+  return ARCHETYPE_PORTRAIT_SETS[archetypeId] ?? ARCHETYPE_PORTRAIT_SETS.Custom;
+}
+
+export function getArchetypeCardPreview(archetypeId: string) {
+  return getPresetPortraitsForArchetype(archetypeId)[0];
 }
 
 export function indexFromAge(age: number) {

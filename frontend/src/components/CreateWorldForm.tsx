@@ -54,6 +54,7 @@ export default function CreateWorldForm() {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [craftStage, setCraftStage] = useState(0);
   const [createdWorld, setCreatedWorld] = useState<{
     id: string;
     name: string;
@@ -102,6 +103,19 @@ export default function CreateWorldForm() {
       setPreviewImageUrl(presetImage);
     }
   }, [presetImageMap, previewImageUrl, settingId]);
+
+  useEffect(() => {
+    if (!loading) {
+      setCraftStage(0);
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      setCraftStage((current) => (current + 1) % 3);
+    }, 1100);
+
+    return () => window.clearInterval(intervalId);
+  }, [loading]);
 
   async function handleGeneratePreview() {
     setPreviewLoading(true);
@@ -190,9 +204,37 @@ export default function CreateWorldForm() {
 
   const selectedSetting = getSettingById(settingId);
   const selectedTone = getToneById(toneId);
+  const craftStages = [
+    `Forging the laws of ${name || 'your realm'}`,
+    `Layering intrigue into ${environment || 'the frontier'}`,
+    `Opening the first chapter of the chronicle`,
+  ];
 
   return (
     <main className={step === 2 ? 'world-flow-shell world-flow-shell-olive' : 'world-flow-shell'}>
+      {loading && (
+        <div className="creation-ritual">
+          <div className="creation-ritual-backdrop" />
+          <div className="creation-ritual-panel">
+            <p className="section-eyebrow">Forging the Realm</p>
+            <h2>{craftStages[craftStage]}</h2>
+            <p>
+              We are shaping the world, sealing its tone, and preparing the first invitation into{' '}
+              <strong>{name || 'your story world'}</strong>.
+            </p>
+            <div className="creation-ritual-progress">
+              <span className={craftStage >= 0 ? 'active' : ''}>Setting</span>
+              <span className={craftStage >= 1 ? 'active' : ''}>Conflict</span>
+              <span className={craftStage >= 2 ? 'active' : ''}>Welcome</span>
+            </div>
+            {previewImageUrl && (
+              <div className="creation-ritual-portrait">
+                <img src={previewImageUrl} alt={name || 'World preview'} />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
       <div className="flow-frame">
         <header className="flow-header center">
           <Link to="/" className="inline-back-link subtle">
