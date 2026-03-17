@@ -25,6 +25,16 @@ locals {
       folder       = "agent-optiongeneration"
       description  = "Build and deploy agent-optiongeneration on push to main"
     }
+    "mcp-server" = {
+      service_name = "agent-mcp"
+      folder       = "mcp-server"
+      description  = "Build and deploy mcp-server on push to main"
+    }
+    "frontend-web" = {
+      service_name = "frontend-web"
+      folder       = "frontend-web"
+      description  = "Build and deploy frontend-web on push to main"
+    }
   }
 }
 
@@ -96,19 +106,15 @@ resource "google_cloudbuildv2_repository" "agent_repo" {
   remote_uri        = "https://github.com/${var.github_owner}/${var.github_repo}.git"
 }
 
+
 # Cloud Build trigger per agent — fires on push to main for the agent folder
 resource "google_cloudbuild_trigger" "agent_triggers" {
   for_each = local.agents
 
-  project     = var.project_id
-  location    = var.location
-  name        = "trigger-${each.key}"
-  description = each.value.description
+  project  = var.project_id
+  location = var.location
+  name     = "trigger-${each.key}"
 
-  # Only watch changes inside the specific agent folder
-  included_files = ["${each.value.folder}/**"]
-
-  # 2nd-gen trigger: reference the connected repository
   repository_event_config {
     repository = google_cloudbuildv2_repository.agent_repo.id
 
@@ -117,8 +123,13 @@ resource "google_cloudbuild_trigger" "agent_triggers" {
     }
   }
 
-  # Use the cloudbuild.yaml inside the agent folder as the build config
   filename = "${each.value.folder}/cloudbuild.yaml"
+
+  # Explicitly set approval_config to work around a legacy provider SDK bug
+  # where the nested block is left as unknown, causing Error 400.
+  approval_config {
+    approval_required = false
+  }
 
   substitutions = {
     _REGION       = var.location
@@ -128,3 +139,4 @@ resource "google_cloudbuild_trigger" "agent_triggers" {
 
   depends_on = [google_cloudbuildv2_repository.agent_repo]
 }
+
