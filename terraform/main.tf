@@ -179,6 +179,7 @@ module "firestore-1" {
   project_id  = var.project_id
   database_id = var.firestore-1_database_id
   location    = var.location
+  delete_protection_state = "DELETE_PROTECTION_DISABLED"
 }
 module "apphub" {
   source         = "github.com/GoogleCloudPlatform/terraform-google-apphub?ref=v0.4.0"
