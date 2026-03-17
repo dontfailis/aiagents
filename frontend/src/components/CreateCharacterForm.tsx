@@ -182,6 +182,9 @@ export default function CreateCharacterForm() {
         character_id: persistedCharacter.id,
         world_id: worldId,
       });
+      if (!session.id) {
+        throw new Error('Session creation returned no session ID.');
+      }
       navigate(`/session/${session.id}`);
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : 'Failed to start session.');

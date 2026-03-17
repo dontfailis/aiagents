@@ -7,6 +7,8 @@ import uuid
 import httpx
 import os
 import json
+import secrets
+import string
 from a2a.client import A2ACardResolver, A2AClient
 from a2a.types import SendMessageRequest, MessageSendParams
 from media_service import (
@@ -46,22 +48,180 @@ AGENT_CREATECHARACTER_URL = os.getenv("AGENT_CREATECHARACTER_URL", "http://local
 AGENT_NARRATIVE_URL = os.getenv("AGENT_NARRATIVE_URL", "http://localhost:10003")
 AGENT_OPTIONGEN_URL = os.getenv("AGENT_OPTIONGEN_URL", "http://localhost:10004")
 
+def extract_jsonish_from_a2a_parts(parts: Any) -> str:
+    def unwrap_part(part: Any) -> Any:
+        if part is None:
+            return None
+
+        root = getattr(part, "root", None)
+        if root is not None:
+            return root
+
+        if hasattr(part, "model_dump"):
+            try:
+                dumped = part.model_dump()
+            except Exception:
+                dumped = None
+            if isinstance(dumped, dict) and dumped.get("root") is not None:
+                return dumped["root"]
+
+        return part
+
+    def serialize_payload(payload: Any) -> str:
+        if payload is None:
+            return ""
+
+        text = getattr(payload, "text", None)
+        if text:
+            return text
+
+        data = getattr(payload, "data", None)
+        if data is not None:
+            return json.dumps(data)
+
+        file_value = getattr(payload, "file", None)
+        if file_value is not None:
+            if hasattr(file_value, "model_dump"):
+                try:
+                    return json.dumps(file_value.model_dump())
+                except Exception:
+                    return str(file_value)
+            return str(file_value)
+
+        if isinstance(payload, dict):
+            if payload.get("text"):
+                return payload["text"]
+            if payload.get("data") is not None:
+                return json.dumps(payload["data"])
+            if payload.get("file") is not None:
+                return json.dumps(payload["file"])
+
+        if hasattr(payload, "model_dump"):
+            try:
+                dumped = payload.model_dump()
+            except Exception:
+                dumped = None
+            if isinstance(dumped, dict):
+                if dumped.get("text"):
+                    return dumped["text"]
+                if dumped.get("data") is not None:
+                    return json.dumps(dumped["data"])
+                if dumped.get("file") is not None:
+                    return json.dumps(dumped["file"])
+                return json.dumps(dumped)
+
+        return ""
+
+    serialized_parts = []
+    for part in parts or []:
+        serialized = serialize_payload(unwrap_part(part))
+        if serialized:
+            serialized_parts.append(serialized)
+
+    return "\n".join(item.strip() for item in serialized_parts if item).strip()
+
+
+def extract_jsonish_from_a2a_message(message: Any) -> str:
+    if message is None:
+        return ""
+
+    direct_text = extract_jsonish_from_a2a_parts(getattr(message, "parts", None) or [])
+    if direct_text:
+        return direct_text
+
+    content = getattr(message, "content", None)
+    return extract_jsonish_from_a2a_parts(getattr(content, "parts", None) or [])
+
+
+def extract_jsonish_from_a2a_artifacts(artifacts: Any) -> str:
+    artifact_payloads = []
+    for artifact in artifacts or []:
+        artifact_payload = extract_jsonish_from_a2a_parts(getattr(artifact, "parts", None) or [])
+        if not artifact_payload:
+            artifact_payload = extract_jsonish_from_a2a_message(getattr(artifact, "content", None))
+        if artifact_payload:
+            artifact_payloads.append(artifact_payload)
+    return "\n".join(item.strip() for item in artifact_payloads if item).strip()
+
+
 def extract_text_from_a2a_result(result: Any) -> str:
     if result is None:
         return ""
 
     message = getattr(result, "message", None)
-    if message and getattr(message, "content", None):
-        parts = getattr(message.content, "parts", []) or []
-        return "".join([part.text for part in parts if getattr(part, "kind", None) == "text"]).strip()
+    message_text = extract_jsonish_from_a2a_message(message)
+    if message_text:
+        return message_text
+
+    status = getattr(result, "status", None)
+    status_message_text = extract_jsonish_from_a2a_message(getattr(status, "message", None))
+    if status_message_text:
+        return status_message_text
+
+    artifact_text = extract_jsonish_from_a2a_artifacts(getattr(result, "artifacts", None) or [])
+    if artifact_text:
+        return artifact_text
+
+    history = getattr(result, "history", None) or []
+    history_texts = [extract_jsonish_from_a2a_message(entry) for entry in history]
+    history_text = "\n".join(text.strip() for text in history_texts if text).strip()
+    if history_text:
+        return history_text
+
+    return ""
+
+
+def summarize_a2a_result_shape(result: Any) -> dict:
+    def part_summary(part: Any) -> dict:
+        root = getattr(part, "root", None)
+        dumped = None
+        if hasattr(part, "model_dump"):
+            try:
+                dumped = part.model_dump()
+            except Exception:
+                dumped = None
+        return {
+            "kind": type(part).__name__,
+            "has_text": bool(getattr(part, "text", None)),
+            "has_data": getattr(part, "data", None) is not None,
+            "root_kind": type(root).__name__ if root is not None else None,
+            "root_text": bool(getattr(root, "text", None)) if root is not None else False,
+            "root_data": getattr(root, "data", None) is not None if root is not None else False,
+            "dump": dumped,
+        }
+
+    def message_summary(message: Any) -> dict | None:
+        if message is None:
+            return None
+        parts = getattr(message, "parts", None) or []
+        content = getattr(message, "content", None)
+        content_parts = getattr(content, "parts", None) or []
+        return {
+            "kind": type(message).__name__,
+            "parts": [part_summary(part) for part in parts[:5]],
+            "content_parts": [part_summary(part) for part in content_parts[:5]],
+        }
 
     artifacts = getattr(result, "artifacts", None) or []
-    artifact_texts = []
-    for artifact in artifacts:
-        parts = getattr(getattr(artifact, "content", None), "parts", []) or []
-        artifact_texts.extend([part.text for part in parts if getattr(part, "kind", None) == "text"])
+    history = getattr(result, "history", None) or []
+    status = getattr(result, "status", None)
 
-    return "\n".join(text.strip() for text in artifact_texts if text).strip()
+    return {
+        "result_type": type(result).__name__,
+        "message": message_summary(getattr(result, "message", None)),
+        "status_message": message_summary(getattr(status, "message", None)),
+        "artifact_count": len(artifacts),
+        "artifacts": [
+            {
+                "kind": type(artifact).__name__,
+                "parts": [part_summary(part) for part in (getattr(artifact, "parts", None) or [])[:5]],
+                "content": message_summary(getattr(artifact, "content", None)),
+            }
+            for artifact in artifacts[:3]
+        ],
+        "history_count": len(history),
+        "history": [message_summary(entry) for entry in history[:3]],
+    }
 
 def load_local_db() -> dict:
     if not os.path.exists(LOCAL_DB_PATH):
@@ -73,6 +233,16 @@ def load_local_db() -> dict:
 def save_local_db(db_data: dict) -> None:
     with open(LOCAL_DB_PATH, "w") as db_file:
         json.dump(db_data, db_file)
+
+def now_iso() -> str:
+    return "2026-03-17T00:00:00Z"
+
+def create_local_document(collection_name: str, document: dict) -> dict:
+    db_data = load_local_db()
+    collection = db_data.setdefault(collection_name, {})
+    collection[document["id"]] = document
+    save_local_db(db_data)
+    return document
 
 def list_collection_documents(collection_name: str) -> List[dict]:
     return list(load_local_db().get(collection_name, {}).values())
@@ -105,6 +275,60 @@ def get_character_name(character_id: str) -> str:
 
 def get_world_from_local_db(world_id: str) -> Optional[dict]:
     return load_local_db().get("worlds", {}).get(world_id)
+
+def get_character_from_local_db(char_id: str) -> Optional[dict]:
+    return load_local_db().get("characters", {}).get(char_id)
+
+def generate_share_code(length: int = 8) -> str:
+    alphabet = string.ascii_uppercase + string.digits
+    return "".join(secrets.choice(alphabet) for _ in range(length))
+
+def build_world_intro(world_data: dict) -> str:
+    description = (world_data.get("description") or "").strip()
+    world_name = world_data["name"]
+    era = world_data["era"]
+    environment = world_data["environment"]
+    tone = world_data["tone"]
+
+    opening = (
+        f"{world_name} is a {tone.lower()} world set in a {era.lower()} age, centered on {environment.lower()}. "
+        f"Every street, rumor, and frontier reflects that mood from the first step into the setting."
+    )
+    detail = (
+        f"The world is built to support immediate play: clear atmosphere, a strong sense of place, "
+        f"and enough tension to give new characters something meaningful to do right away."
+    )
+    if description:
+        detail = f"{description} {detail}"
+
+    return f"{opening}\n\n{detail}"
+
+def build_character_fit_reasoning(world: dict, character: dict) -> str:
+    return (
+        f"{character['name']} fits {world['name']} because the {character['archetype'].lower()} concept, "
+        f"backstory, and visual description can operate naturally within a {world['tone'].lower()} "
+        f"{world['era'].lower()} setting centered on {world['environment'].lower()}."
+    )
+
+def build_opening_scene(world: dict, character: dict) -> dict:
+    character_name = character["name"]
+    archetype = character["archetype"]
+    environment = world["environment"]
+    world_name = world["name"]
+    tone = world["tone"]
+    backstory = character.get("backstory") or "A past that still pulls at the present."
+
+    narrative = (
+        f"{character_name}, a {archetype.lower()} shaped by {backstory.lower()}, arrives in {environment} at the edge of {world_name}. "
+        f"The atmosphere is unmistakably {tone.lower()}, and the first signs of trouble are already visible in the people, the streets, and the rumors moving faster than the wind.\n\n"
+        f"Nothing about this moment feels accidental. Something is shifting in {environment}, and {character_name} is close enough to intervene, exploit it, or be pulled under by it."
+    )
+    choices = [
+        {"id": 1, "text": f"Survey {environment} carefully before acting"},
+        {"id": 2, "text": "Approach the nearest suspicious figure and ask questions"},
+        {"id": 3, "text": f"Lean on your {archetype.lower()} instincts and pursue the strongest lead"},
+    ]
+    return {"narrative": narrative, "choices": choices}
 
 def enrich_world_media(world: dict) -> dict:
     banner_url = world.get("banner_url") or ensure_world_banner(world, PUBLIC_API_BASE_URL)
@@ -206,7 +430,12 @@ async def send_a2a_message(agent_url: str, prompt: str) -> dict:
             if hasattr(response, 'root') and hasattr(response.root, 'result'):
                  text = extract_text_from_a2a_result(response.root.result)
                  if not text:
-                     return {"error": f"Agent returned no text payload ({type(response.root.result).__name__})"}
+                     result_shape = summarize_a2a_result_shape(response.root.result)
+                     print(f"A2A result had no text payload: {json.dumps(result_shape)}")
+                     return {
+                         "error": f"Agent returned no text payload ({type(response.root.result).__name__})",
+                         "result_shape": result_shape,
+                     }
                  # Agents are instructed to return pure JSON
                  if text.startswith("```json"):
                      text = text.split("```json")[1].split("```")[0].strip()
@@ -310,25 +539,26 @@ async def preview_character(preview_data: CharacterPreviewRequest):
 
 @app.post("/api/worlds", status_code=201)
 async def create_world(world_data: WorldCreate):
-    prompt = f"""Create a new world with the following details:
-    Name: {world_data.name}
-    Era: {world_data.era}
-    Environment: {world_data.environment}
-    Tone: {world_data.tone}
-    Description: {world_data.description}
-    """
-    res = await send_a2a_message(AGENT_CREATEWORLD_URL, prompt)
-    if "error" in res and "raw_text" not in res:
-        raise HTTPException(status_code=500, detail=res["error"])
-    return enrich_world_media(res)
+    world = {
+        "id": str(uuid.uuid4()),
+        "name": world_data.name,
+        "era": world_data.era,
+        "environment": world_data.environment,
+        "tone": world_data.tone,
+        "description": world_data.description,
+        "intro": build_world_intro(world_data.model_dump()),
+        "share_code": generate_share_code(),
+        "created_at": now_iso(),
+    }
+    create_local_document("worlds", world)
+    return enrich_world_media(world)
 
 @app.get("/api/worlds/{world_id}")
 async def get_world(world_id: str):
-    prompt = f"Use the get_world tool to fetch world_id: {world_id}"
-    res = await send_a2a_message(AGENT_CREATEWORLD_URL, prompt)
-    if "error" in res:
+    world = get_world_from_local_db(world_id)
+    if not world:
         raise HTTPException(status_code=404, detail="World not found")
-    return enrich_world_media(res)
+    return enrich_world_media(world)
 
 @app.post("/api/worlds/{share_code}/join")
 async def join_world(share_code: str):
@@ -377,16 +607,24 @@ async def get_world_chronicle(world_id: str):
 
 @app.post("/api/characters", status_code=201)
 async def create_character(char_data: CharacterCreate):
-    prompt = f"""Validate and create a character for world_id: {char_data.world_id}.
-    Name: {char_data.name}
-    Age: {char_data.age}
-    Archetype: {char_data.archetype}
-    Backstory: {char_data.backstory}
-    Visual: {char_data.visual_description}
-    """
-    res = await send_a2a_message(AGENT_CREATECHARACTER_URL, prompt)
-    if "error" in res and "raw_text" not in res:
-        raise HTTPException(status_code=500, detail=res["error"])
+    world = get_world_from_local_db(char_data.world_id)
+    if not world:
+        raise HTTPException(status_code=404, detail="World not found")
+
+    res = {
+        "id": str(uuid.uuid4()),
+        "world_id": char_data.world_id,
+        "name": char_data.name,
+        "age": char_data.age,
+        "archetype": char_data.archetype,
+        "backstory": char_data.backstory,
+        "visual_description": char_data.visual_description,
+        "portrait_url": char_data.portrait_url,
+        "portrait_urls": char_data.portrait_urls,
+        "fit_reasoning": build_character_fit_reasoning(world, char_data.model_dump()),
+        "created_at": now_iso(),
+    }
+    create_local_document("characters", res)
 
     preview_updates = {}
     if char_data.portrait_urls:
@@ -405,46 +643,44 @@ async def create_character(char_data: CharacterCreate):
 
 @app.get("/api/characters/{char_id}")
 async def get_character(char_id: str):
-    prompt = f"Use the get_character tool to fetch char_id: {char_id}"
-    res = await send_a2a_message(AGENT_CREATECHARACTER_URL, prompt)
-    if "error" in res:
+    character = get_character_from_local_db(char_id)
+    if not character:
         raise HTTPException(status_code=404, detail="Character not found")
-    return enrich_character_media(res)
+    return enrich_character_media(character)
 
 @app.post("/api/sessions", status_code=201)
 async def create_session(session_data: SessionCreate):
-    # First get choices from option gen (empty scene implies start)
-    # Actually, narrative agent can just generate the intro, and we provide empty choices to start.
-    prompt = f"""Create a new session using the create_session tool. 
-    character_id: {session_data.character_id}
-    world_id: {session_data.world_id}
-    Generate a 2-3 paragraph introductory scene narrative.
-    For the choices parameter, pass an empty list [].
-    Return the result of the tool as JSON.
-    """
-    res = await send_a2a_message(AGENT_NARRATIVE_URL, prompt)
-    
-    # Now generate choices based on the new narrative
-    if "id" in res and "current_scene" in res:
-        narrative = res["current_scene"].get("narrative", "")
-        choices_prompt = f"Generate JSON choices for this scene:\n{narrative}"
-        choices_res = await send_a2a_message(AGENT_OPTIONGEN_URL, choices_prompt)
-        
-        if isinstance(choices_res, list):
-            # Update session with these choices
-            update_prompt = f"""Use update_session tool on session_id: {res["id"]}.
-            new_narrative: {narrative}
-            new_choices: {json.dumps(choices_res)}
-            scene_number: 1
-            history_entry: {json.dumps({"scene_number": 1, "narrative": narrative, "choice": "started adventure"})}
-            """
-            final_res = await send_a2a_message(AGENT_NARRATIVE_URL, update_prompt)
-            return enrich_session_media(final_res)
-            
-    return enrich_session_media(res)
+    world = get_world_from_local_db(session_data.world_id)
+    if not world:
+        raise HTTPException(status_code=404, detail="World not found")
+
+    character = get_character_from_local_db(session_data.character_id)
+    if not character:
+        raise HTTPException(status_code=404, detail="Character not found")
+
+    opening_scene = build_opening_scene(world, character)
+    session = {
+        "id": str(uuid.uuid4()),
+        "character_id": session_data.character_id,
+        "world_id": session_data.world_id,
+        "status": "in_progress",
+        "current_scene": {
+            "scene_number": 1,
+            "narrative": opening_scene["narrative"],
+            "choices": opening_scene["choices"],
+        },
+        "history": [],
+        "created_at": now_iso(),
+    }
+    create_local_document("sessions", session)
+    return enrich_session_media(session)
 
 @app.get("/api/sessions/{session_id}")
 async def get_session(session_id: str):
+    session = load_local_db().get("sessions", {}).get(session_id)
+    if session:
+        return enrich_session_media(session)
+
     prompt = f"Use the get_session tool to fetch session_id: {session_id}"
     res = await send_a2a_message(AGENT_NARRATIVE_URL, prompt)
     if "error" in res:
