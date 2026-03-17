@@ -7,9 +7,10 @@ module "cloud-run-1" {
   project_id                    = var.project_id
   location                      = var.location
   service_name                  = "agent-mcp"
-  containers                    = [{"container_image" = "us-docker.pkg.dev/cloudrun/container/hello", "container_name" = "service-container", "env_vars" = merge({"memorystore_1_REDIS_AUTH_STRING" = module.memorystore-1.auth_string, "memorystore_1_REDIS_HOST" = module.memorystore-1.host, "memorystore_1_REDIS_PORT" = module.memorystore-1.env_vars.REDIS_PORT}, {"firestore_1_FIRESTORE_DATABASE_ID" = module.firestore-1.database_id}), "ports" = {"container_port" = 8080, "name" = "http1"}, "resources" = {"cpu_idle" = true, "startup_cpu_boost" = false}}]
+  containers                    = [{"container_image" = "us-central1-docker.pkg.dev/qwiklabs-asl-02-12036ac6afd2/cloud-run-source-deploy/agent-mcp@sha256:354ed8be6431f6972fde30316f85149ca50ec4c4470d0db4830ce4ae8aa161f4", "container_name" = "service-container", "env_vars" = merge({"memorystore_1_REDIS_AUTH_STRING" = module.memorystore-1.auth_string, "memorystore_1_REDIS_HOST" = module.memorystore-1.host, "memorystore_1_REDIS_PORT" = module.memorystore-1.env_vars.REDIS_PORT}, {"firestore_1_FIRESTORE_DATABASE_ID" = module.firestore-1.database_id}), "ports" = {"container_port" = 8080, "name" = "http1"}, "resources" = {"cpu_idle" = true, "startup_cpu_boost" = false}}]
   gpu_zonal_redundancy_disabled = false
   service_account_project_roles = concat(["roles/redis.editor"], ["roles/datastore.user"])
+  members                       = ["allUsers"]
   vpc_access = {
     egress = "ALL_TRAFFIC"
     network_interfaces = {
@@ -42,7 +43,7 @@ module "cloud-run-2" {
   project_id                    = var.project_id
   location                      = var.location
   service_name                  = "agent-createworld"
-  containers                    = [{"resources" = {"startup_cpu_boost" = false, "cpu_idle" = true}, "container_image" = "us-docker.pkg.dev/cloudrun/container/hello", "container_name" = "service-container", "env_vars" = {"cloud_run_1_SERVICE_ENDPOINT" = module.cloud-run-1.service_uri, "AGENT_CREATEWORLD_URL" = var.agent_createworld_url, "AGENT_CREATECHARACTER_URL" = var.agent_createcharacter_url, "AGENT_NARRATIVE_URL" = var.agent_narrative_url, "AGENT_OPTIONGEN_URL" = var.agent_optiongen_url}, "ports" = {"container_port" = 8080, "name" = "http1"}}]
+  containers                    = [{"resources" = {"startup_cpu_boost" = false, "cpu_idle" = true}, "container_image" = "us-central1-docker.pkg.dev/qwiklabs-asl-02-12036ac6afd2/cloud-run-source-deploy/agent-createworld@sha256:48bb3ba74f31185322e2164901cb5b69e7ff8b801c7c450b2a9f77c793a4b63e", "container_name" = "service-container", "env_vars" = {"cloud_run_1_SERVICE_ENDPOINT" = module.cloud-run-1.service_uri, "AGENT_CREATEWORLD_URL" = var.agent_createworld_url, "AGENT_CREATECHARACTER_URL" = var.agent_createcharacter_url, "AGENT_NARRATIVE_URL" = var.agent_narrative_url, "AGENT_OPTIONGEN_URL" = var.agent_optiongen_url}, "ports" = {"container_port" = 8080, "name" = "http1"}}]
   gpu_zonal_redundancy_disabled = false
   service_account_project_roles = ["roles/run.invoker"]
   vpc_access = {
@@ -66,7 +67,7 @@ module "cloud-run-3" {
   project_id                    = var.project_id
   location                      = var.location
   service_name                  = "agent-createcharacter"
-  containers                    = [{"ports" = {"container_port" = 8080, "name" = "http1"}, "resources" = {"cpu_idle" = true, "startup_cpu_boost" = false}, "container_image" = "us-docker.pkg.dev/cloudrun/container/hello", "container_name" = "service-container", "env_vars" = {"cloud_run_1_SERVICE_ENDPOINT" = module.cloud-run-1.service_uri, "AGENT_CREATEWORLD_URL" = var.agent_createworld_url, "AGENT_CREATECHARACTER_URL" = var.agent_createcharacter_url, "AGENT_NARRATIVE_URL" = var.agent_narrative_url, "AGENT_OPTIONGEN_URL" = var.agent_optiongen_url}}]
+  containers                    = [{"ports" = {"container_port" = 8080, "name" = "http1"}, "resources" = {"cpu_idle" = true, "startup_cpu_boost" = false}, "container_image" = "us-central1-docker.pkg.dev/qwiklabs-asl-02-12036ac6afd2/cloud-run-source-deploy/agent-createcharacter@sha256:40e34b3e665fd0fb383363283cacd71e910327507f873f53426db90b9a58b793", "container_name" = "service-container", "env_vars" = {"cloud_run_1_SERVICE_ENDPOINT" = module.cloud-run-1.service_uri, "AGENT_CREATEWORLD_URL" = var.agent_createworld_url, "AGENT_CREATECHARACTER_URL" = var.agent_createcharacter_url, "AGENT_NARRATIVE_URL" = var.agent_narrative_url, "AGENT_OPTIONGEN_URL" = var.agent_optiongen_url}}]
   gpu_zonal_redundancy_disabled = false
   service_account_project_roles = ["roles/run.invoker"]
   vpc_access = {
@@ -90,7 +91,7 @@ module "cloud-run-4" {
   project_id                    = var.project_id
   location                      = var.location
   service_name                  = "agent-narrative"
-  containers                    = [{"env_vars" = {"cloud_run_1_SERVICE_ENDPOINT" = module.cloud-run-1.service_uri, "AGENT_CREATEWORLD_URL" = var.agent_createworld_url, "AGENT_CREATECHARACTER_URL" = var.agent_createcharacter_url, "AGENT_NARRATIVE_URL" = var.agent_narrative_url, "AGENT_OPTIONGEN_URL" = var.agent_optiongen_url}, "ports" = {"container_port" = 8080, "name" = "http1"}, "resources" = {"cpu_idle" = true, "startup_cpu_boost" = false}, "container_image" = "us-docker.pkg.dev/cloudrun/container/hello", "container_name" = "service-container"}]
+  containers                    = [{"env_vars" = {"cloud_run_1_SERVICE_ENDPOINT" = module.cloud-run-1.service_uri, "AGENT_CREATEWORLD_URL" = var.agent_createworld_url, "AGENT_CREATECHARACTER_URL" = var.agent_createcharacter_url, "AGENT_NARRATIVE_URL" = var.agent_narrative_url, "AGENT_OPTIONGEN_URL" = var.agent_optiongen_url}, "ports" = {"container_port" = 8080, "name" = "http1"}, "resources" = {"cpu_idle" = true, "startup_cpu_boost" = false}, "container_image" = "us-central1-docker.pkg.dev/qwiklabs-asl-02-12036ac6afd2/cloud-run-source-deploy/agent-narrative@sha256:7257a8fe85674a633a7ecd862b6672db3faabdc5372748e5bf2d68817d4bdbc1", "container_name" = "service-container"}]
   gpu_zonal_redundancy_disabled = false
   service_account_project_roles = ["roles/run.invoker"]
   vpc_access = {
@@ -131,7 +132,7 @@ module "cloud-run-5" {
   project_id                    = var.project_id
   location                      = var.location
   service_name                  = "agent-optiongeneration"
-  containers                    = [{"resources" = {"startup_cpu_boost" = false, "cpu_idle" = true}, "container_image" = "us-docker.pkg.dev/cloudrun/container/hello", "container_name" = "service-container", "env_vars" = {"cloud_run_1_SERVICE_ENDPOINT" = module.cloud-run-1.service_uri, "AGENT_CREATEWORLD_URL" = var.agent_createworld_url, "AGENT_CREATECHARACTER_URL" = var.agent_createcharacter_url, "AGENT_NARRATIVE_URL" = var.agent_narrative_url, "AGENT_OPTIONGEN_URL" = var.agent_optiongen_url}, "ports" = {"container_port" = 8080, "name" = "http1"}}]
+  containers                    = [{"resources" = {"startup_cpu_boost" = false, "cpu_idle" = true}, "container_image" = "us-central1-docker.pkg.dev/qwiklabs-asl-02-12036ac6afd2/cloud-run-source-deploy/agent-optiongeneration@sha256:126a20bcaf39109071a2b86cba8aa8b269a9012557c7cc6a5c22902ab756f75a", "container_name" = "service-container", "env_vars" = {"cloud_run_1_SERVICE_ENDPOINT" = module.cloud-run-1.service_uri, "AGENT_CREATEWORLD_URL" = var.agent_createworld_url, "AGENT_CREATECHARACTER_URL" = var.agent_createcharacter_url, "AGENT_NARRATIVE_URL" = var.agent_narrative_url, "AGENT_OPTIONGEN_URL" = var.agent_optiongen_url}, "ports" = {"container_port" = 8080, "name" = "http1"}}]
   gpu_zonal_redundancy_disabled = false
   service_account_project_roles = ["roles/run.invoker"]
   vpc_access = {
@@ -155,7 +156,7 @@ module "cloud-run-6" {
   project_id                    = var.project_id
   location                      = var.location
   service_name                  = "frontend-web"
-  containers                    = [{"ports" = {"container_port" = 8080, "name" = "http1"}, "resources" = {"cpu_idle" = true, "startup_cpu_boost" = false}, "container_image" = "us-docker.pkg.dev/cloudrun/container/hello", "container_name" = "service-container", "env_vars" = {"cloud_run_1_SERVICE_ENDPOINT" = module.cloud-run-1.service_uri, "AGENT_CREATEWORLD_URL" = var.agent_createworld_url, "AGENT_CREATECHARACTER_URL" = var.agent_createcharacter_url, "AGENT_NARRATIVE_URL" = var.agent_narrative_url, "AGENT_OPTIONGEN_URL" = var.agent_optiongen_url}}]
+  containers                    = [{"ports" = {"container_port" = 8080, "name" = "http1"}, "resources" = {"cpu_idle" = true, "startup_cpu_boost" = false}, "container_image" = "us-central1-docker.pkg.dev/qwiklabs-asl-02-12036ac6afd2/cloud-run-source-deploy/frontend-web@sha256:e4ef82a7ee02c0e9afd21675eec83ebabbc19750a68b67ff9e2e43bff18bfda0", "container_name" = "service-container", "env_vars" = {"cloud_run_1_SERVICE_ENDPOINT" = module.cloud-run-1.service_uri, "AGENT_CREATEWORLD_URL" = var.agent_createworld_url, "AGENT_CREATECHARACTER_URL" = var.agent_createcharacter_url, "AGENT_NARRATIVE_URL" = var.agent_narrative_url, "AGENT_OPTIONGEN_URL" = var.agent_optiongen_url}}]
   gpu_zonal_redundancy_disabled = false
   service_account_project_roles = ["roles/run.invoker"]
   members                       = ["allUsers"]

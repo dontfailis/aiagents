@@ -64,10 +64,20 @@ for FOLDER in "${!SERVICES[@]}"; do
     continue
   fi
 
+  # frontend-web needs the project root as build context (imports tools/)
+  if [[ "${FOLDER}" == "frontend-web" ]]; then
+    BUILD_CONTEXT="${SCRIPT_DIR}"
+    DOCKERFILE_FLAG=("-f" "${SRC}/Dockerfile")
+  else
+    BUILD_CONTEXT="${SRC}"
+    DOCKERFILE_FLAG=()
+  fi
+
   if docker build \
       --platform linux/amd64 \
       -t "${IMAGE}" \
-      "${SRC}"; then
+      "${DOCKERFILE_FLAG[@]}" \
+      "${BUILD_CONTEXT}"; then
     ok "Built ${FOLDER}"
   else
     err "Build failed for ${FOLDER}"
