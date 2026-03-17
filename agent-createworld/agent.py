@@ -31,7 +31,6 @@ root_agent = LlmAgent(
     tools=[
         MCPToolset(
             connection_params=StreamableHTTPConnectionParams(url=mcp_url),
-            lazy_init=True,
         )
     ],
 )

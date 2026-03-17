@@ -212,16 +212,19 @@ resource "google_cloud_run_v2_service_iam_member" "frontend_web_domain" {
   member   = "allUsers"
 }
 
-resource "google_cloud_run_domain_mapping" "frontend_web_domain" {
-  project  = var.project_id
-  location = var.location
-  name     = "worldchronicle.nl"
-
-  metadata {
-    namespace = var.project_id
-  }
-
-  spec {
-    route_name = module.cloud-run-6.service_name
-  }
-}
+# Custom domain mapping for worldchronicle.nl
+# PREREQUISITE: Verify domain ownership first at:
+# https://www.google.com/webmasters/verification/verification?domain=worldchronicle.nl
+# Then uncomment the block below and run terraform apply again.
+#
+# resource "google_cloud_run_domain_mapping" "frontend_web_domain" {
+#   project  = var.project_id
+#   location = var.location
+#   name     = "worldchronicle.nl"
+#   metadata {
+#     namespace = var.project_id
+#   }
+#   spec {
+#     route_name = module.cloud-run-6.service_name
+#   }
+# }
