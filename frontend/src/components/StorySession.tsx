@@ -22,6 +22,7 @@ export default function StorySession() {
   const [narrationSceneNumber, setNarrationSceneNumber] = useState<number | null>(null);
   const [videoStatus, setVideoStatus] = useState<'idle' | 'pending' | 'ready' | 'error'>('idle');
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [sceneIndex, setSceneIndex] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
@@ -39,6 +40,7 @@ export default function StorySession() {
           getCharacter(sessionResponse.character_id),
         ]);
         setSession(sessionResponse);
+        setSceneIndex(0);
         setWorld(worldResponse);
         setCharacter(characterResponse);
       } catch (loadError) {
@@ -158,6 +160,8 @@ export default function StorySession() {
     try {
       const response = await submitChoice(sessionId, choiceId);
       setSession(response);
+      const nextSceneLogLength = response.scene_log?.length ?? 0;
+      setSceneIndex(Math.max(nextSceneLogLength - 1, 0));
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : 'Failed to process choice.');
     } finally {
@@ -176,6 +180,8 @@ export default function StorySession() {
     try {
       const response = await concludeSession(sessionId);
       setSession(response);
+      const nextSceneLogLength = response.scene_log?.length ?? 0;
+      setSceneIndex(Math.max(nextSceneLogLength - 1, 0));
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : 'Failed to conclude session.');
     } finally {
@@ -264,6 +270,9 @@ export default function StorySession() {
 
   const summaryHighlights = splitSummary(session.summary);
   const warmingChoices = session.prefetch_status === 'pending';
+  const sceneLog = session.scene_log && session.scene_log.length > 0 ? session.scene_log : [session.current_scene];
+  const activeScene = sceneLog[Math.min(sceneIndex, sceneLog.length - 1)] ?? session.current_scene;
+  const isViewingLatestScene = sceneIndex >= sceneLog.length - 1;
 
   if (session.status === 'completed') {
     return (
@@ -325,7 +334,42 @@ export default function StorySession() {
         {error && <p className="error-banner">{error}</p>}
 
         <div className="session-scene-count">
-          Scene {session.current_scene.scene_number} of {TARGET_SCENE_COUNT}
+          Scene {activeScene.scene_number} of {TARGET_SCENE_COUNT}
+        </div>
+
+        <div className="session-scene-nav">
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={() => setSceneIndex(0)}
+            disabled={sceneIndex === 0}
+          >
+            Start
+          </button>
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={() => setSceneIndex((current) => Math.max(current - 1, 0))}
+            disabled={sceneIndex === 0}
+          >
+            Previous
+          </button>
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={() => setSceneIndex((current) => Math.min(current + 1, sceneLog.length - 1))}
+            disabled={sceneIndex >= sceneLog.length - 1}
+          >
+            Next
+          </button>
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={() => setSceneIndex(sceneLog.length - 1)}
+            disabled={isViewingLatestScene}
+          >
+            Live
+          </button>
         </div>
 
         <article className="session-story-text">
@@ -334,64 +378,79 @@ export default function StorySession() {
               type="button"
               className="session-audio-button"
               onClick={handleToggleReadAloud}
+              disabled={!isViewingLatestScene}
             >
               {narrationLoading ? <LoaderCircle size={16} className="spin" /> : isReadingAloud ? <VolumeX size={16} /> : <Volume2 size={16} />}
               <span>
-                {narrationLoading ? 'Generating narration' : isReadingAloud ? 'Stop narration' : 'Play narration'}
+                {!isViewingLatestScene
+                  ? 'Narration available on live scene'
+                  : narrationLoading
+                    ? 'Generating narration'
+                    : isReadingAloud
+                      ? 'Stop narration'
+                      : 'Play narration'}
               </span>
             </button>
             <button
               type="button"
               className="session-audio-button"
               onClick={() => void handleCreateSceneVideo()}
+              disabled={!isViewingLatestScene}
             >
               {videoStatus === 'pending' ? <LoaderCircle size={16} className="spin" /> : <Clapperboard size={16} />}
               <span>
-                {videoStatus === 'ready'
-                  ? 'Scene video ready'
-                  : videoStatus === 'pending'
-                    ? 'Creating scene video'
-                    : 'Create scene video'}
+                {!isViewingLatestScene
+                  ? 'Video available on live scene'
+                  : videoStatus === 'ready'
+                    ? 'Scene video ready'
+                    : videoStatus === 'pending'
+                      ? 'Creating scene video'
+                      : 'Create scene video'}
               </span>
             </button>
           </div>
-          {session.current_scene.image_url && (
+          {activeScene.image_url && (
             <div className="session-scene-image">
-              <img src={session.current_scene.image_url} alt={`Scene ${session.current_scene.scene_number}`} />
+              <img src={activeScene.image_url} alt={`Scene ${activeScene.scene_number}`} />
             </div>
           )}
-          {session.current_scene.narrative.split('\n').map((paragraph) => (
+          {activeScene.narrative.split('\n').map((paragraph) => (
             <p key={paragraph}>{paragraph}</p>
           ))}
-          {videoUrl && (
+          {!isViewingLatestScene && activeScene.choice_made && (
+            <p className="session-history-note">Chosen path: {activeScene.choice_made}</p>
+          )}
+          {isViewingLatestScene && videoUrl && (
             <div className="session-scene-video">
               <video controls preload="metadata" src={videoUrl} />
             </div>
           )}
-          <p className="session-story-prompt">What do you do?</p>
+          <p className="session-story-prompt">
+            {isViewingLatestScene ? 'What do you do?' : 'Viewing a recorded scene. Return to Live to continue playing.'}
+          </p>
         </article>
 
         <div className="session-choices">
-          {warmingChoices && (
+          {isViewingLatestScene && warmingChoices && (
             <div className="session-choice-loading">
               <LoaderCircle size={16} className="spin" />
               <span>Preparing the next three branches while you read...</span>
             </div>
           )}
-          {session.current_scene.choices.map((choice, index) => (
+          {activeScene.choices.map((choice, index) => (
             <button
               type="button"
               key={choice.id}
               className="session-choice-button"
               onClick={() => void handleChoice(choice.id)}
-              disabled={processingChoice}
+              disabled={processingChoice || !isViewingLatestScene}
             >
               <span className="session-choice-letter">
                 {String.fromCharCode(65 + index)}
               </span>
               <span>
                 {choice.text}
-                {warmingChoices && !(session.prefetched_choice_ids ?? []).includes(choice.id) && (
+                {isViewingLatestScene && warmingChoices && !(session.prefetched_choice_ids ?? []).includes(choice.id) && (
                   <small className="session-choice-substatus">branch warming up</small>
                 )}
               </span>
@@ -399,7 +458,7 @@ export default function StorySession() {
           ))}
         </div>
 
-        {session.current_scene.scene_number >= 5 && (
+        {isViewingLatestScene && session.current_scene.scene_number >= 5 && (
           <div className="session-conclude-panel">
             <p>The narrative is reaching a natural conclusion.</p>
             <button

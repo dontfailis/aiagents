@@ -1684,6 +1684,14 @@ img {
   padding: 0.45rem 0.95rem;
 }
 
+.session-scene-nav {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 0 auto 1.5rem;
+}
+
 .session-story-text {
   max-width: 42rem;
   margin: 0 auto 2.5rem;
@@ -1699,6 +1707,12 @@ img {
 
 .session-story-text p {
   margin: 0 0 1.3rem;
+}
+
+.session-history-note {
+  color: rgba(209, 216, 228, 0.72);
+  font-size: 1rem;
+  font-style: italic;
 }
 
 .session-story-prompt {

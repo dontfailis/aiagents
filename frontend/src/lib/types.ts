@@ -35,6 +35,7 @@ export interface StoryScene {
   narrative: string;
   choices: StoryChoice[];
   image_url?: string;
+  choice_made?: string;
 }
 
 export interface SessionHistoryEntry {
@@ -50,6 +51,7 @@ export interface Session {
   status: 'in_progress' | 'completed';
   current_scene: StoryScene;
   history: SessionHistoryEntry[];
+  scene_log?: StoryScene[];
   prefetched_choice_ids?: number[];
   prefetch_status?: 'pending' | 'ready';
   summary?: string;

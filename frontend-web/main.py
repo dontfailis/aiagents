@@ -791,34 +791,95 @@ def enrich_character_media(character: dict) -> dict:
         return updated or {**character, **updates}
     return character
 
+
+def build_scene_snapshot(scene: dict, *, choice_made: str | None = None) -> dict:
+    snapshot = {
+        "scene_number": scene.get("scene_number"),
+        "narrative": scene.get("narrative", ""),
+        "choices": scene.get("choices", []) or [],
+    }
+    if scene.get("image_url"):
+        snapshot["image_url"] = scene["image_url"]
+    if choice_made:
+        snapshot["choice_made"] = choice_made
+    return snapshot
+
+
+def normalize_scene_log(session: dict) -> list[dict]:
+    existing = session.get("scene_log")
+    if isinstance(existing, list) and existing:
+        return existing
+
+    history = session.get("history", []) or []
+    reconstructed = []
+    for entry in history:
+        reconstructed.append(
+            {
+                "scene_number": entry.get("scene_number"),
+                "narrative": entry.get("narrative", ""),
+                "choices": [],
+                "choice_made": entry.get("choice"),
+            }
+        )
+
+    current_scene = session.get("current_scene", {}) or {}
+    if current_scene.get("scene_number") and current_scene.get("narrative"):
+        reconstructed.append(build_scene_snapshot(current_scene))
+    return reconstructed
+
 def enrich_session_media(session: dict) -> dict:
     world = get_world_from_local_db(session.get("world_id", ""))
     if not world:
         return session
 
+    updates: dict[str, Any] = {}
+
     current_scene = session.get("current_scene", {}) or {}
     scene_number = current_scene.get("scene_number")
     narrative = current_scene.get("narrative", "")
-    if not scene_number or not narrative:
-        return session
+    enriched_current_scene = current_scene
+    if scene_number and narrative:
+        image_url = current_scene.get("image_url") or ensure_scene_image(
+            session.get("id", ""),
+            scene_number,
+            narrative,
+            world,
+            PUBLIC_API_BASE_URL,
+        )
+        if image_url:
+            enriched_current_scene = {
+                **current_scene,
+                "image_url": image_url,
+            }
+            updates["current_scene"] = enriched_current_scene
 
-    image_url = current_scene.get("image_url") or ensure_scene_image(
-        session.get("id", ""),
-        scene_number,
-        narrative,
-        world,
-        PUBLIC_API_BASE_URL,
-    )
-    if not image_url:
-        return session
+    scene_log = normalize_scene_log({**session, "current_scene": enriched_current_scene})
+    enriched_scene_log = []
+    for entry in scene_log:
+        entry_number = entry.get("scene_number")
+        entry_narrative = entry.get("narrative", "")
+        image_url = entry.get("image_url")
+        if entry_number and entry_narrative and not image_url:
+            image_url = ensure_scene_image(
+                session.get("id", ""),
+                entry_number,
+                entry_narrative,
+                world,
+                PUBLIC_API_BASE_URL,
+            )
+        enriched_entry = {**entry}
+        if image_url:
+            enriched_entry["image_url"] = image_url
+        enriched_scene_log.append(enriched_entry)
+    updates["scene_log"] = enriched_scene_log
 
-    return {
-        **session,
-        "current_scene": {
-            **current_scene,
-            "image_url": image_url,
-        },
-    }
+    if updates and session.get("id"):
+        updated = update_local_document("sessions", session["id"], updates)
+        session = updated or {**session, **updates}
+    else:
+        session = {**session, **updates}
+
+    return session
 
 def build_chronicle_entry(session_data: dict, world_data: dict) -> dict:
     history_count = len(session_data.get("history", []))
@@ -1114,6 +1175,15 @@ async def create_session(session_data: SessionCreate):
             "choices": opening_scene["choices"],
         },
         "history": [],
+        "scene_log": [
+            build_scene_snapshot(
+                {
+                    "scene_number": 1,
+                    "narrative": opening_scene["narrative"],
+                    "choices": opening_scene["choices"],
+                }
+            )
+        ],
         "prefetched_choices": {},
         "prefetched_choice_ids": [],
         "prefetch_status": "ready",
@@ -1171,6 +1241,24 @@ async def submit_choice(session_id: str, submission: ChoiceSubmission):
         "narrative": current_scene.get("narrative", ""),
         "choice": (selected_choice or {}).get("text", "made a choice"),
     }
+    existing_scene_log = normalize_scene_log(session)
+    archived_current_scene = build_scene_snapshot(
+        current_scene,
+        choice_made=(selected_choice or {}).get("text", "made a choice"),
+    )
+    if existing_scene_log and existing_scene_log[-1].get("scene_number") == archived_current_scene.get("scene_number"):
+        scene_log = [*existing_scene_log[:-1], archived_current_scene]
+    else:
+        scene_log = [*existing_scene_log, archived_current_scene]
+    scene_log.append(
+        build_scene_snapshot(
+            {
+                "scene_number": next_scene["scene_number"],
+                "narrative": next_scene["narrative"],
+                "choices": next_scene["choices"],
+            }
+        )
+    )
     updated_session = {
         **session,
         "current_scene": {
@@ -1179,6 +1267,7 @@ async def submit_choice(session_id: str, submission: ChoiceSubmission):
             "choices": next_scene["choices"],
         },
         "history": session.get("history", []) + [history_entry],
+        "scene_log": scene_log,
         "prefetched_choices": {},
         "prefetched_choice_ids": [],
         "prefetch_status": "ready",
