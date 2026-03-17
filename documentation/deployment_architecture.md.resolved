@@ -1,0 +1,93 @@
+# Deployment Architecture
+
+The following diagram illustrates the deployment architecture for the AI Storytelling RPG, generated based on the Terraform configuration ([terraform/main.tf](file:///Users/tarek/Documents/Obisidian-Vault/Treasure%20Hoard/work/Google%20Agents%20Roloaded/Hackathon/aiagents/terraform/main.tf) and [cloudbuild.tf](file:///Users/tarek/Documents/Obisidian-Vault/Treasure%20Hoard/work/Google%20Agents%20Roloaded/Hackathon/aiagents/terraform/cloudbuild.tf)) and the codebase structure.
+
+## Overview
+*   **Infrastructure as Code**: Provisioned using Terraform ([main.tf](file:///Users/tarek/Documents/Obisidian-Vault/Treasure%20Hoard/work/Google%20Agents%20Roloaded/Hackathon/aiagents/terraform/main.tf)).
+*   **Hosting Location**: Google Cloud Run hosts all the discrete microservices (Agents, MCP, Frontend).
+*   **Databases**: Stateful data is managed by Google Cloud Firestore (Document DB) and Google Cloud Memorystore (Redis).
+*   **CI/CD**: Managed by Google Cloud Build, which watches the GitHub repository and pushes Docker images to Google Artifact Registry.
+
+## Architecture Diagram
+
+```mermaid
+flowchart TD
+    %% Define Styles
+    classDef user fill:#f9f9f9,stroke:#333,stroke-width:2px,stroke-dasharray: 5 5
+    classDef lb fill:#4285F4,stroke:#fff,color:#fff
+    classDef cloudrun fill:#34A853,stroke:#fff,color:#fff
+    classDef database fill:#FBBC05,stroke:#fff,color:#333
+    classDef build fill:#EA4335,stroke:#fff,color:#fff
+
+    %% External
+    User((Player)):::user
+    GitHub[GitHub Repository]:::build
+    
+    %% Load Balancing
+    LB[HTTP Load Balancer <br/> lb-backend-1]:::lb
+    
+    subgraph GCP [Google Cloud Platform]
+        %% Frontend
+        Frontend[Frontend Web Service <br/> cloud-run-6]:::cloudrun
+        
+        %% Agents Layer
+        subgraph Agents [AI Agent Microservices]
+            AgentCW[Agent CreateWorld <br/> cloud-run-2]:::cloudrun
+            AgentCC[Agent CreateCharacter <br/> cloud-run-3]:::cloudrun
+            AgentNar[Agent Narrative <br/> cloud-run-4]:::cloudrun
+            AgentOpt[Agent OptionGen <br/> cloud-run-5]:::cloudrun
+        end
+        
+        %% Central MCP / Backend
+        MCPServer[MCP Server / API Backend <br/> cloud-run-1]:::cloudrun
+        
+        %% Databases
+        Firestore[(Firestore DB <br/> Worlds, Chars, Sessions)]:::database
+        Redis[(Memorystore Redis)]:::database
+        
+        %% CI/CD
+        CloudBuild[Cloud Build <br/> CI/CD Pipelines]:::build
+        ArtifactReg[Artifact Registry <br/> Docker Images]:::build
+    end
+
+    %% Connections
+    User -->|HTTPS| LB
+    LB -->|Routes traffic| Frontend
+    
+    %% Frontend talks to agents and MCP/Backend
+    Frontend -.->|API Calls| MCPServer
+    Frontend -.->|Task requests| Agents
+    
+    %% Agents connect to MCP
+    AgentCW -->|Fetches/Saves Data <br/> via fastmcp| MCPServer
+    AgentCC -->|Fetches/Saves Data <br/> via fastmcp| MCPServer
+    AgentNar -->|Fetches/Saves Data <br/> via fastmcp| MCPServer
+    AgentOpt -->|Fetches/Saves Data <br/> via fastmcp| MCPServer
+    
+    %% MCP connects to DBs
+    MCPServer -->|CRUD Operations| Firestore
+    MCPServer -->|Cache/State| Redis
+    
+    %% Build Flow
+    GitHub -.->|On Push to main| CloudBuild
+    CloudBuild -.->|Build & Push| ArtifactReg
+    ArtifactReg -.->|Deploy Image| Agents
+    ArtifactReg -.->|Deploy Image| MCPServer
+    ArtifactReg -.->|Deploy Image| Frontend
+```
+
+### Key Components
+
+1.  **Cloud Run Services**: Each major component is deployed as its own scalable Cloud Run service.
+    *   `agent-mcp` (Cloud Run 1): Acts as the central integration point. It exposes tools via the Model Context Protocol (MCP) to the agents and serves core database orchestration.
+    *   `agent-createworld` (Cloud Run 2): ADK LlmAgent responsible for world generation.
+    *   `agent-createcharacter` (Cloud Run 3): ADK LlmAgent responsible for character validation and portrait generation.
+    *   `agent-narrative` (Cloud Run 4): ADK LlmAgent generating the primary story scenes.
+    *   `agent-optiongeneration` (Cloud Run 5): ADK LlmAgent generating choices for the user.
+    *   `frontend-web` (Cloud Run 6): The user-facing application, placed behind an HTTP load balancer.
+2.  **State Management**:
+    *   `firestore-1`: The primary persistent document store for Worlds, Characters, and Sessions. Accessed securely by the MCP Server.
+    *   `memorystore-1`: A Redis cluster hooked up to the MCP server for fast ephemeral caching or session states.
+3.  **Deployment Flow**:
+    *   [cloudbuild.tf](file:///Users/tarek/Documents/Obisidian-Vault/Treasure%20Hoard/work/Google%20Agents%20Roloaded/Hackathon/aiagents/terraform/cloudbuild.tf) exposes 2nd-gen GitHub connection triggers.
+    *   Pushing to the [main](file:///Users/tarek/Documents/Obisidian-Vault/Treasure%20Hoard/work/Google%20Agents%20Roloaded/Hackathon/aiagents/tools/image_generator/generate_portrait.py#34-64) branch inside specific service folders (`agent-*`) triggers Cloud Build, which builds a Docker container and pushes it to Artifact Registry before Cloud Run pulls the new image.
