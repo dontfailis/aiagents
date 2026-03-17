@@ -714,6 +714,61 @@ def build_scene_video_relative_path(session_id: str, scene_number: int, narrativ
     return f"videos/sessions/{session_id}/scene_{scene_number}_{video_hash}.mp4"
 
 
+def get_scene_from_session(session: dict, scene_number: int) -> dict:
+    scene_log = normalize_scene_log(session)
+    for scene in scene_log:
+        if int(scene.get("scene_number") or 0) == scene_number:
+            return scene
+
+    current_scene = session.get("current_scene", {}) or {}
+    if int(current_scene.get("scene_number") or 0) == scene_number:
+        return current_scene
+
+    return {}
+
+
+def persist_scene_video_status(session_id: str, scene_number: int, status: dict) -> None:
+    session = load_local_db().get("sessions", {}).get(session_id)
+    if not session:
+        return
+
+    scene_log = normalize_scene_log(session)
+    updated_scene_log = []
+    for scene in scene_log:
+        if int(scene.get("scene_number") or 0) == scene_number:
+            updated_scene = {**scene}
+            if status.get("video_url"):
+                updated_scene["video_url"] = status["video_url"]
+            if status.get("status"):
+                updated_scene["video_status"] = status["status"]
+            if status.get("error"):
+                updated_scene["video_error"] = status["error"]
+            updated_scene_log.append(updated_scene)
+        else:
+            updated_scene_log.append(scene)
+
+    current_scene = session.get("current_scene", {}) or {}
+    updated_current_scene = current_scene
+    if int(current_scene.get("scene_number") or 0) == scene_number:
+        updated_current_scene = {**current_scene}
+        if status.get("video_url"):
+            updated_current_scene["video_url"] = status["video_url"]
+        if status.get("status"):
+            updated_current_scene["video_status"] = status["status"]
+        if status.get("error"):
+            updated_current_scene["video_error"] = status["error"]
+
+    update_local_document(
+        "sessions",
+        session_id,
+        {
+            "current_scene": updated_current_scene,
+            "scene_log": updated_scene_log,
+            "updated_at": now_iso(),
+        },
+    )
+
+
 def start_scene_video_generation(session_id: str, session: dict, world: dict, character: dict) -> dict:
     current_scene = session.get("current_scene", {}) or {}
     scene_number = current_scene.get("scene_number")
@@ -729,6 +784,7 @@ def start_scene_video_generation(session_id: str, session: dict, world: dict, ch
     if absolute_path.exists():
         status = {"status": "ready", "video_url": cached_url, "scene_number": scene_number}
         VIDEO_STATUS[video_key] = status
+        persist_scene_video_status(session_id, scene_number, status)
         return status
 
     existing_task = VIDEO_TASKS.get(video_key)
@@ -738,6 +794,7 @@ def start_scene_video_generation(session_id: str, session: dict, world: dict, ch
 
     prompt = build_scene_video_prompt(narrative, world, character)
     VIDEO_STATUS[video_key] = {"status": "pending", "scene_number": scene_number}
+    persist_scene_video_status(session_id, scene_number, VIDEO_STATUS[video_key])
 
     async def _runner() -> None:
         try:
@@ -752,12 +809,14 @@ def start_scene_video_generation(session_id: str, session: dict, world: dict, ch
                     "video_url": cached_url,
                     "scene_number": scene_number,
                 }
+                persist_scene_video_status(session_id, scene_number, VIDEO_STATUS[video_key])
             else:
                 VIDEO_STATUS[video_key] = {
                     "status": "error",
                     "error": "Video generation is unavailable",
                     "scene_number": scene_number,
                 }
+                persist_scene_video_status(session_id, scene_number, VIDEO_STATUS[video_key])
         finally:
             VIDEO_TASKS.pop(video_key, None)
 
@@ -800,6 +859,8 @@ def build_scene_snapshot(scene: dict, *, choice_made: str | None = None) -> dict
     }
     if scene.get("image_url"):
         snapshot["image_url"] = scene["image_url"]
+    if scene.get("audio_url"):
+        snapshot["audio_url"] = scene["audio_url"]
     if choice_made:
         snapshot["choice_made"] = choice_made
     return snapshot
@@ -851,6 +912,18 @@ def enrich_session_media(session: dict) -> dict:
                 **current_scene,
                 "image_url": image_url,
             }
+        audio_url = current_scene.get("audio_url") or ensure_scene_audio(
+            session.get("id", ""),
+            scene_number,
+            narrative,
+            PUBLIC_API_BASE_URL,
+        )
+        if audio_url:
+            enriched_current_scene = {
+                **enriched_current_scene,
+                "audio_url": audio_url,
+            }
+        if enriched_current_scene != current_scene:
             updates["current_scene"] = enriched_current_scene
 
     scene_log = normalize_scene_log({**session, "current_scene": enriched_current_scene})
@@ -859,6 +932,7 @@ def enrich_session_media(session: dict) -> dict:
         entry_number = entry.get("scene_number")
         entry_narrative = entry.get("narrative", "")
         image_url = entry.get("image_url")
+        audio_url = entry.get("audio_url")
         if entry_number and entry_narrative and not image_url:
             image_url = ensure_scene_image(
                 session.get("id", ""),
@@ -867,9 +941,18 @@ def enrich_session_media(session: dict) -> dict:
                 world,
                 PUBLIC_API_BASE_URL,
             )
+        if entry_number and entry_narrative and not audio_url:
+            audio_url = ensure_scene_audio(
+                session.get("id", ""),
+                entry_number,
+                entry_narrative,
+                PUBLIC_API_BASE_URL,
+            )
         enriched_entry = {**entry}
         if image_url:
             enriched_entry["image_url"] = image_url
+        if audio_url:
+            enriched_entry["audio_url"] = audio_url
         enriched_scene_log.append(enriched_entry)
     updates["scene_log"] = enriched_scene_log
 
@@ -1368,15 +1451,30 @@ async def get_session_video(session_id: str, scene_number: int):
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
 
-    current_scene = session.get("current_scene", {}) or {}
-    narrative = current_scene.get("narrative", "")
+    target_scene = get_scene_from_session(session, scene_number)
+    narrative = target_scene.get("narrative", "")
+    if target_scene.get("video_url"):
+        return {
+            "status": target_scene.get("video_status", "ready"),
+            "scene_number": scene_number,
+            "video_url": target_scene["video_url"],
+            **({"error": target_scene["video_error"]} if target_scene.get("video_error") else {}),
+        }
+    if not narrative:
+        return {"status": "idle", "scene_number": scene_number}
     relative_path = build_scene_video_relative_path(session_id, scene_number, narrative)
     absolute_path = GENERATED_MEDIA_DIR / relative_path
     if absolute_path.exists():
-        return {
+        status = {
             "status": "ready",
             "scene_number": scene_number,
             "video_url": f"{PUBLIC_API_BASE_URL.rstrip('/')}/generated/{relative_path}",
         }
+        persist_scene_video_status(session_id, scene_number, status)
+        return status
 
-    return {"status": "idle", "scene_number": scene_number}
+    return {
+        "status": target_scene.get("video_status", "idle"),
+        "scene_number": scene_number,
+        **({"error": target_scene["video_error"]} if target_scene.get("video_error") else {}),
+    }

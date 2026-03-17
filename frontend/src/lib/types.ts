@@ -35,6 +35,10 @@ export interface StoryScene {
   narrative: string;
   choices: StoryChoice[];
   image_url?: string;
+  audio_url?: string;
+  video_url?: string;
+  video_status?: 'idle' | 'pending' | 'ready' | 'error';
+  video_error?: string;
   choice_made?: string;
 }
 

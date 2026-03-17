@@ -188,7 +188,7 @@ export async function createSessionNarration(sessionId: string) {
 
 export async function createSessionVideo(sessionId: string) {
   try {
-    const response = await api.post<{ status: string; scene_number: number; video_url?: string }>(
+    const response = await api.post<{ status: string; scene_number: number; video_url?: string; error?: string }>(
       `/api/sessions/${sessionId}/video`,
     );
     return response.data;
@@ -199,7 +199,7 @@ export async function createSessionVideo(sessionId: string) {
 
 export async function getSessionVideo(sessionId: string, sceneNumber: number) {
   try {
-    const response = await api.get<{ status: string; scene_number: number; video_url?: string }>(
+    const response = await api.get<{ status: string; scene_number: number; video_url?: string; error?: string }>(
       `/api/sessions/${sessionId}/video`,
       { params: { scene_number: sceneNumber } },
     );

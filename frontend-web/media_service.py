@@ -30,6 +30,8 @@ PRESET_MEDIA_DIR = GENERATED_MEDIA_DIR / "presets"
 DEFAULT_TTS_VOICE = "Aoede"
 VIDEO_MODEL = "veo-3.0-fast-generate-001"
 VIDEO_OUTPUT_GCS_URI = os.getenv("VIDEO_OUTPUT_GCS_URI")
+VIDEO_POLL_INTERVAL_SECONDS = int(os.getenv("VIDEO_POLL_INTERVAL_SECONDS", "10"))
+VIDEO_MAX_WAIT_SECONDS = int(os.getenv("VIDEO_MAX_WAIT_SECONDS", "180"))
 
 WORLD_SETTING_PRESETS: dict[str, dict[str, str]] = {
     "medieval-fantasy": {
@@ -312,7 +314,7 @@ def generate_scene_video(
         return True
 
     try:
-        client = get_tts_client(get_api_key())
+        client = make_client(get_api_key())
         config = genai_types.GenerateVideosConfig(
             aspect_ratio="16:9",
             duration_seconds=4,
@@ -326,8 +328,17 @@ def generate_scene_video(
             prompt=prompt,
             config=config,
         )
+        waited_seconds = 0
         while not operation.done:
-            time.sleep(10)
+            time.sleep(VIDEO_POLL_INTERVAL_SECONDS)
+            waited_seconds += VIDEO_POLL_INTERVAL_SECONDS
+            if waited_seconds >= VIDEO_MAX_WAIT_SECONDS:
+                logger.warning(
+                    "Gemini/Veo video generation timed out after %s seconds for %s",
+                    VIDEO_MAX_WAIT_SECONDS,
+                    path,
+                )
+                return False
             operation = client.operations.get(operation)
 
         result = getattr(operation, "result", None) or getattr(operation, "response", None)

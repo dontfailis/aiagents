@@ -79,6 +79,14 @@ export default function StorySession() {
   }, []);
 
   useEffect(() => {
+    audioRef.current?.pause();
+    if (audioRef.current) {
+      audioRef.current.currentTime = 0;
+    }
+    setIsReadingAloud(false);
+  }, [sceneIndex]);
+
+  useEffect(() => {
     if (!sessionId || !session?.current_scene?.scene_number) {
       return;
     }
@@ -128,10 +136,12 @@ export default function StorySession() {
           if (result.status === 'ready' && result.video_url) {
             setVideoStatus('ready');
             setVideoUrl(result.video_url);
+            setError(null);
             window.clearInterval(intervalId);
           }
           if (result.status === 'error') {
             setVideoStatus('error');
+            setError(result.error ?? 'Scene video generation failed.');
             window.clearInterval(intervalId);
           }
         })
@@ -202,6 +212,12 @@ export default function StorySession() {
       if (result.status === 'ready' && result.video_url) {
         setVideoStatus('ready');
         setVideoUrl(result.video_url);
+        setError(null);
+        return;
+      }
+      if (result.status === 'error') {
+        setVideoStatus('error');
+        setError(result.error ?? 'Scene video generation failed.');
         return;
       }
       setVideoStatus('pending');
@@ -226,13 +242,24 @@ export default function StorySession() {
     setError(null);
 
     try {
-      let audioUrl = narrationUrl;
-      if (!audioUrl || narrationSceneNumber !== session.current_scene.scene_number) {
+      const availableScenes = session.scene_log && session.scene_log.length > 0 ? session.scene_log : [session.current_scene];
+      const currentSceneIndex = Math.min(sceneIndex, availableScenes.length - 1);
+      const selectedScene = availableScenes[currentSceneIndex] ?? session.current_scene;
+      const selectedSceneAudioUrl =
+        selectedScene.audio_url
+        ?? (narrationSceneNumber === selectedScene.scene_number ? narrationUrl : null);
+
+      let audioUrl = selectedSceneAudioUrl;
+      if (!audioUrl && selectedScene.scene_number === session.current_scene.scene_number) {
         setNarrationLoading(true);
         const narration = await createSessionNarration(sessionId);
         audioUrl = narration.audio_url;
         setNarrationUrl(narration.audio_url);
         setNarrationSceneNumber(narration.scene_number);
+      }
+      if (!audioUrl) {
+        setError('Narration is unavailable for this snapshot.');
+        return;
       }
       const audio = audioRef.current ?? new Audio();
       audioRef.current = audio;
@@ -273,6 +300,9 @@ export default function StorySession() {
   const sceneLog = session.scene_log && session.scene_log.length > 0 ? session.scene_log : [session.current_scene];
   const activeScene = sceneLog[Math.min(sceneIndex, sceneLog.length - 1)] ?? session.current_scene;
   const isViewingLatestScene = sceneIndex >= sceneLog.length - 1;
+  const activeSceneAudioUrl =
+    activeScene.audio_url
+    ?? (narrationSceneNumber === activeScene.scene_number ? narrationUrl : null);
 
   if (session.status === 'completed') {
     return (
@@ -378,12 +408,14 @@ export default function StorySession() {
               type="button"
               className="session-audio-button"
               onClick={handleToggleReadAloud}
-              disabled={!isViewingLatestScene}
+              disabled={!isViewingLatestScene && !activeSceneAudioUrl}
             >
               {narrationLoading ? <LoaderCircle size={16} className="spin" /> : isReadingAloud ? <VolumeX size={16} /> : <Volume2 size={16} />}
               <span>
-                {!isViewingLatestScene
-                  ? 'Narration available on live scene'
+                {!isViewingLatestScene && !activeSceneAudioUrl
+                  ? 'Narration unavailable on this snapshot'
+                  : !isViewingLatestScene
+                    ? 'Play snapshot narration'
                   : narrationLoading
                     ? 'Generating narration'
                     : isReadingAloud
