@@ -1,5 +1,9 @@
 import hashlib
+import logging
+import os
 import sys
+import time
+import wave
 from pathlib import Path
 from typing import Any
 
@@ -11,13 +15,21 @@ from tools.image_generator._gemini import generate_images, get_api_key, make_cli
 from tools.image_generator.generate_portrait import PROMPT_TEMPLATE as PORTRAIT_PROMPT_TEMPLATE
 from tools.image_generator.generate_scene_art import PROMPT_TEMPLATE as SCENE_PROMPT_TEMPLATE
 from tools.image_generator.generate_world_banner import PROMPT_TEMPLATE as WORLD_PROMPT_TEMPLATE
+from tools.text_to_speech import TTS_MODEL, get_client as get_tts_client
+from google.genai import types as genai_types
+
+logger = logging.getLogger(__name__)
 
 GENERATED_MEDIA_DIR = ROOT_DIR / "generated_media"
 WORLD_MEDIA_DIR = GENERATED_MEDIA_DIR / "worlds"
 CHARACTER_MEDIA_DIR = GENERATED_MEDIA_DIR / "characters"
 SESSION_MEDIA_DIR = GENERATED_MEDIA_DIR / "sessions"
+SESSION_AUDIO_DIR = GENERATED_MEDIA_DIR / "audio"
 PREVIEW_MEDIA_DIR = GENERATED_MEDIA_DIR / "previews"
 PRESET_MEDIA_DIR = GENERATED_MEDIA_DIR / "presets"
+DEFAULT_TTS_VOICE = "Aoede"
+VIDEO_MODEL = "veo-3.0-fast-generate-001"
+VIDEO_OUTPUT_GCS_URI = os.getenv("VIDEO_OUTPUT_GCS_URI")
 
 WORLD_SETTING_PRESETS: dict[str, dict[str, str]] = {
     "medieval-fantasy": {
@@ -53,6 +65,7 @@ def ensure_media_dirs() -> None:
         WORLD_MEDIA_DIR,
         CHARACTER_MEDIA_DIR,
         SESSION_MEDIA_DIR,
+        SESSION_AUDIO_DIR,
         PREVIEW_MEDIA_DIR,
         PRESET_MEDIA_DIR,
     ):
@@ -94,6 +107,51 @@ def _generate_cached_images(
         _write_png(path, image_bytes)
 
     return all(path.exists() for path in paths)
+
+
+def _generate_cached_speech(*, path: Path, text: str, voice_name: str) -> bool:
+    if path.exists():
+        return True
+
+    try:
+        client = get_tts_client(get_api_key())
+        response = client.models.generate_content(
+            model=TTS_MODEL,
+            contents=text,
+            config={
+                "response_modalities": ["AUDIO"],
+                "speech_config": {
+                    "language_code": "en-US",
+                    "voice_config": {
+                        "prebuilt_voice_config": {
+                            "voice_name": voice_name,
+                        }
+                    }
+                },
+            },
+        )
+    except Exception as exc:
+        logger.exception("Gemini TTS generation failed: %s", exc)
+        return False
+
+    candidates = getattr(response, "candidates", None) or []
+    if not candidates:
+        return False
+
+    parts = getattr(getattr(candidates[0], "content", None), "parts", None) or []
+    audio_part = next((part.inline_data for part in parts if getattr(part, "inline_data", None)), None)
+    if not audio_part:
+        logger.warning("Gemini TTS response did not contain inline audio data.")
+        return False
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with wave.open(str(path), "wb") as wav_file:
+        wav_file.setnchannels(1)
+        wav_file.setsampwidth(2)
+        wav_file.setframerate(24000)
+        wav_file.writeframes(audio_part.data)
+
+    return path.exists()
 
 
 def _world_prompt(payload: dict[str, Any]) -> str:
@@ -202,6 +260,103 @@ def ensure_scene_image(
         return None
 
     return _build_url(relative_path, public_base_url)
+
+
+def ensure_scene_audio(
+    session_id: str,
+    scene_number: int,
+    narrative: str,
+    public_base_url: str,
+    voice_name: str = DEFAULT_TTS_VOICE,
+) -> str | None:
+    ensure_media_dirs()
+    audio_hash = _hash_payload(session_id, str(scene_number), narrative, voice_name)
+    relative_path = Path("audio") / "sessions" / session_id / f"scene_{scene_number}_{audio_hash}.wav"
+    absolute_path = GENERATED_MEDIA_DIR / relative_path
+
+    if not _generate_cached_speech(
+        path=absolute_path,
+        text=narrative,
+        voice_name=voice_name,
+    ):
+        return None
+
+    return _build_url(relative_path, public_base_url)
+
+
+def build_scene_video_prompt(
+    scene_narrative: str,
+    world: dict[str, Any],
+    character: dict[str, Any],
+) -> str:
+    return (
+        f"Cinematic story scene in {world.get('name', 'a fantasy world')}, {world.get('era', 'fantasy')}. "
+        f"Tone: {world.get('tone', 'adventure')}. "
+        f"Location: {world.get('environment', 'unknown region')}. "
+        f"Main character: {character.get('name', 'the protagonist')}, "
+        f"a {character.get('archetype', 'wanderer')} with appearance described as {character.get('visual_description', 'distinctive')}. "
+        f"Backstory context: {character.get('backstory', 'They are drawn into events bigger than themselves.')}. "
+        f"Scene description: {scene_narrative} "
+        f"Show the character clearly in the scene. Camera language should feel like a polished fantasy drama trailer shot, "
+        f"with natural motion, environmental detail, and dramatic pacing."
+    )
+
+
+def generate_scene_video(
+    *,
+    path: Path,
+    prompt: str,
+    model: str = VIDEO_MODEL,
+) -> bool:
+    if path.exists():
+        return True
+
+    try:
+        client = get_tts_client(get_api_key())
+        config = genai_types.GenerateVideosConfig(
+            aspect_ratio="16:9",
+            duration_seconds=4,
+            person_generation="allow_all",
+        )
+        if VIDEO_OUTPUT_GCS_URI:
+            config.output_gcs_uri = VIDEO_OUTPUT_GCS_URI
+
+        operation = client.models.generate_videos(
+            model=model,
+            prompt=prompt,
+            config=config,
+        )
+        while not operation.done:
+            time.sleep(10)
+            operation = client.operations.get(operation)
+
+        result = getattr(operation, "result", None) or getattr(operation, "response", None)
+        generated_videos = getattr(result, "generated_videos", None) or []
+        if not generated_videos:
+            logger.warning("Veo video generation returned no generated videos. Operation=%s", operation)
+            return False
+
+        video = generated_videos[0].video
+        video_uri = getattr(video, "uri", None)
+
+        if video_uri and video_uri.startswith("gs://"):
+            from google.cloud import storage
+
+            bucket_name, blob_name = video_uri[5:].split("/", 1)
+            storage_client = storage.Client(project=os.environ.get("GOOGLE_CLOUD_PROJECT"))
+            bucket = storage_client.bucket(bucket_name)
+            blob = bucket.blob(blob_name)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            blob.download_to_filename(str(path))
+            return path.exists()
+
+        client.files.download(file=video)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        video.save(str(path))
+        return path.exists()
+    except Exception as exc:
+        logger.exception("Gemini/Veo video generation failed: %s", exc)
+        return False
 
 
 def ensure_world_setting_preset(setting_id: str, public_base_url: str) -> str | None:

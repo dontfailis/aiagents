@@ -28,7 +28,7 @@ except ImportError:
     pass
 
 # Define the model to use for TTS
-TTS_MODEL = "gemini-2.5-flash-preview-tts"
+TTS_MODEL = "gemini-2.5-flash-tts"
 
 def get_client(api_key: Optional[str] = None) -> genai.Client:
     """Initializes the Gemini internal client using an API key or ADC (Vertex AI).
@@ -48,6 +48,8 @@ def get_client(api_key: Optional[str] = None) -> genai.Client:
     # Fall back to Application Default Credentials via Vertex AI
     project = os.environ.get("GOOGLE_CLOUD_PROJECT")
     location = os.environ.get("GOOGLE_CLOUD_LOCATION", "us-central1")
+    if location == "global":
+        location = os.environ.get("GOOGLE_CLOUD_TTS_LOCATION", "us-central1")
     if not project:
         print("Error: Set GEMINI_API_KEY or GOOGLE_CLOUD_PROJECT for ADC auth.")
         sys.exit(1)

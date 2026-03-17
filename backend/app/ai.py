@@ -13,6 +13,141 @@ load_dotenv()
 # We can configure ADK's LlmAgent directly
 MODEL_NAME = 'gemini-1.5-flash'
 
+
+def _history_excerpt(history: list | None, limit: int = 3) -> str:
+    if not history:
+        return ""
+    recent = history[-limit:]
+    return "\n".join(
+        [
+            f"- Scene {entry.get('scene_number', '?')}: choice={entry.get('choice', 'unknown')} | "
+            f"outcome={entry.get('narrative', '').replace(chr(10), ' ')[:220]}"
+            for entry in recent
+        ]
+    )
+
+
+def _infer_approach(choice_text: str | None) -> str:
+    text = (choice_text or "").lower()
+    if any(word in text for word in ["ask", "parley", "convince", "speak", "bargain"]):
+        return "social"
+    if any(word in text for word in ["sneak", "shadow", "hide", "stealth", "slip"]):
+        return "stealth"
+    if any(word in text for word in ["study", "inspect", "investigate", "survey", "examine", "decipher"]):
+        return "investigation"
+    if any(word in text for word in ["attack", "charge", "fight", "draw steel", "strike"]):
+        return "force"
+    return "bold"
+
+
+def _build_story_state(world_data: dict, char_data: dict, history: list | None = None, last_choice: str | None = None) -> dict:
+    history = history or []
+    scene_number = len(history) + 1
+    environment = world_data.get("environment", "the frontier")
+    world_name = world_data.get("name", "the realm")
+    tone = world_data.get("tone", "Adventure")
+    archetype = char_data.get("archetype", "wanderer")
+    character_name = char_data.get("name", "The hero")
+    backstory = char_data.get("backstory", "a past that still shapes every step")
+    approach = _infer_approach(last_choice)
+
+    opening_hooks = [
+        f"an abandoned shrine beneath {environment}",
+        f"a smuggler route threading through {environment}",
+        f"a sealed crypt whispered about in {world_name}",
+        f"a missing patrol last seen near {environment}",
+    ]
+    threats = [
+        "grave-robbers working by lamplight",
+        "a cult cell listening for forbidden names",
+        "restless dead stirred by a broken ward",
+        "mercenaries hunting the same prize",
+    ]
+    discoveries = [
+        "a rune-marked key of black iron",
+        "a bloodstained map with one corridor scratched out",
+        "a votive idol warm to the touch",
+        "a witness who knows more than they admit",
+    ]
+
+    opening_hook = opening_hooks[(scene_number - 1) % len(opening_hooks)]
+    threat = threats[(scene_number - 1) % len(threats)]
+    discovery = discoveries[(scene_number - 1) % len(discoveries)]
+
+    if history:
+        opening_hook = f"the trail left by {history[-1].get('choice', 'the last decision').lower()}"
+        discovery = discoveries[len(history) % len(discoveries)]
+
+    consequence_map = {
+        "social": (
+            "words buy a narrow opening before steel has to speak",
+            "someone in the dark now believes they can use the party",
+        ),
+        "stealth": (
+            "silence reveals what force would have shattered",
+            "one mistake will turn the whole chamber against the intruder",
+        ),
+        "investigation": (
+            "careful observation exposes the hidden structure of the danger",
+            "knowledge arrives with the burden of acting on it immediately",
+        ),
+        "force": (
+            "violence breaks the stalemate and wakes everything nearby",
+            "the fastest path forward is now the loudest and most costly",
+        ),
+        "bold": (
+            "decisive action changes the balance before anyone else can react",
+            "the situation sharpens around a risk that can no longer be ignored",
+        ),
+    }
+    consequence, stake = consequence_map[approach]
+
+    return {
+        "scene_number": scene_number,
+        "world_name": world_name,
+        "environment": environment,
+        "tone": tone,
+        "archetype": archetype,
+        "character_name": character_name,
+        "backstory": backstory,
+        "approach": approach,
+        "hook": opening_hook,
+        "threat": threat,
+        "discovery": discovery,
+        "consequence": consequence,
+        "stake": stake,
+    }
+
+
+def _build_fallback_choices(state: dict) -> list[dict]:
+    archetype = state["archetype"].lower()
+    environment = state["environment"]
+    threat = state["threat"]
+    discovery = state["discovery"]
+    return [
+        {"id": 1, "text": f"Press deeper into {environment} and confront {threat} before they can regroup"},
+        {"id": 2, "text": f"Circle the danger quietly and secure {discovery} before anyone notices"},
+        {"id": 3, "text": f"Use your {archetype} instincts to question the weakest link and learn who truly controls this place"},
+        {"id": 4, "text": f"Risk a dungeon-crawler's gambit: claim the objective now, even if it triggers the chamber's hidden defenses"},
+    ]
+
+
+def _build_fallback_scene(world_data: dict, char_data: dict, history: list | None = None, last_choice: str | None = None) -> dict:
+    state = _build_story_state(world_data, char_data, history, last_choice)
+    prior = _history_excerpt(history)
+    narrative = (
+        f"In {state['world_name']}, the way into {state['hook']} opens only after {state['character_name']} commits to the next step. "
+        f"The air in {state['environment']} tastes of old dust, wet stone, and lamp smoke, and the signs of {state['threat']} are impossible to miss once a trained eye settles on them.\n\n"
+        f"{state['character_name']} moves like someone shaped by {state['backstory'].lower()}, and that history matters here. "
+        f"{state['consequence']}. Beneath the obvious danger lies {state['discovery']}, the sort of dungeon secret that can turn a minor errand into a campaign-defining descent.\n\n"
+        f"Nothing in this chamber is neutral. {state['stake']}. "
+        f"If {state['character_name']} hesitates, the opposition will lock the route down, hide the evidence, or carry the relic farther into the dark. "
+        f"If they act, they may seize the initiative but pay for it in blood, trust, or time."
+    )
+    if prior:
+        narrative += f"\n\nRecent turns still echo through the scene:\n{prior}"
+    return {"narrative": narrative, "choices": _build_fallback_choices(state)}
+
 async def generate_world_intro(world_data: dict):
     """
     Generates a rich narrative introduction for a world based on its metadata.
@@ -158,21 +293,26 @@ async def generate_next_scene(world_data: dict, char_data: dict, history: list =
     last_choice_str = f"The player chose: {last_choice}" if last_choice else "This is the start of the adventure."
     
     prompt = f"""
-    You are an expert game master. Generate the next scene in an asynchronous storytelling RPG.
-    
+    You are the dungeon master for a collaborative fantasy campaign.
+    Generate the next scene in an asynchronous storytelling RPG with the cadence of a strong tabletop GM.
+
     WORLD: {world_data['name']} ({world_data['era']}, {world_data['tone']})
     CHARACTER: {char_data['name']}, a {char_data['age']} year old {char_data['archetype']}. Backstory: {char_data['backstory']}
-    
+
     {world_state_str}
-    
+
     {history_str}
-    
+
     {last_choice_str}
-    
+
     TASK:
-    1. Write 2-3 paragraphs of immersive narrative for the current scene.
-    2. Provide 2-4 distinct, numbered choices for the player.
-    
+    1. Write 3-5 paragraphs of immersive narrative with concrete sensory detail, named scene elements, and a clear escalation of stakes.
+    2. Make the new scene a direct consequence of the player's prior choice.
+    3. Frame the scene like a dungeon master: present a dangerous place, active opposition, discoverable information, and an immediate dilemma.
+    4. Provide 3-4 distinct choices grounded in the exact fiction of the scene.
+    5. Each choice must represent a different approach and imply a meaningful tradeoff or consequence.
+    6. Avoid generic choices like "continue" or "look around."
+
     Output in JSON format:
     {{
         "narrative": "the story text",
@@ -212,10 +352,7 @@ async def generate_next_scene(world_data: dict, char_data: dict, history: list =
         return json.loads(text)
     except Exception as e:
         logging.error(f"Failed next scene: {e}")
-        return {
-            "narrative": f"The journey continues for {char_data['name']} in the {world_data['name']}.",
-            "choices": [{"id": 1, "text": "Press onward"}, {"id": 2, "text": "Look for shelter"}]
-        }
+        return _build_fallback_scene(world_data, char_data, history, last_choice)
 
 async def generate_session_summary(world_data: dict, char_data: dict, history: list):
     """
