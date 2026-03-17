@@ -46,30 +46,3 @@ variable "agent_optiongen_url" {
   default     = ""
 }
 
-# ── Cloud Build / CI variables ─────────────────────────────────────────────────
-
-variable "github_owner" {
-  description = "GitHub organisation or username that owns the repository."
-  type        = string
-}
-
-variable "github_repo" {
-  description = "GitHub repository name (without the owner prefix)."
-  type        = string
-}
-
-variable "artifact_registry_repo" {
-  description = "Artifact Registry repository ID used to store agent Docker images."
-  type        = string
-  default     = "cloud-run-source-deploy"
-}
-
-variable "github_app_installation_id" {
-  description = "Installation ID of the Cloud Build GitHub App on your GitHub account/org. Found in the GitHub App settings URL."
-  type        = number
-}
-
-variable "github_oauth_token_secret_version" {
-  description = "Full Secret Manager secret version resource name holding the GitHub OAuth token used by the Cloud Build connection. Format: projects/PROJECT/secrets/SECRET/versions/VERSION"
-  type        = string
-}

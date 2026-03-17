@@ -13,15 +13,3 @@ apphub_application_id   = "chronex-apphub"
 # agent_narrative_url       = "https://agent-narrative-xxxx-uc.a.run.app"
 # agent_optiongen_url       = "https://agent-optiongeneration-xxxx-uc.a.run.app"
 
-# Cloud Build / GitHub connection
-github_owner           = "dontfailis"
-github_repo            = "aiagents"
-artifact_registry_repo = "cloud-run-source-deploy"
-
-# 2nd-gen Cloud Build GitHub connection credentials.
-# 1. Install the Cloud Build GitHub App on your repo and find the
-#    installation ID in: https://github.com/settings/installations
-# 2. Store a GitHub personal-access-token in Secret Manager and put
-#    the full version resource name below.
-github_app_installation_id        = 117018522 # replace with real installation ID
-github_oauth_token_secret_version = "projects/qwiklabs-asl-02-12036ac6afd2/secrets/github-cloudbuild-token/versions/latest"
